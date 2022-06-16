@@ -1,5 +1,7 @@
-; 这个系统的名字是hcos
-; TAB宽度为4
+; hcos-ipl
+; TAB=4
+
+CYLS	EQU		10				; 这个IPL只能读入十个柱面
 
 		ORG		0x7c00			; 指明程序的装载地址
 
@@ -26,16 +28,65 @@
 		DB		"FAT12   "		; 磁盘格式名称，八个字节
 		RESB	18				; 先空出18个字节
 
+
 ; 程序核心
 
+; IPL入口
 entry:
 		MOV		AX,0			; 初始化各个寄存器
 		MOV		SS,AX
 		MOV		SP,0x7c00
 		MOV		DS,AX
-		MOV		ES,AX
 
-		MOV		SI,msg          ; 把msg的地址放到SI寄存器
+; 读硬盘
+
+		MOV		AX,0x0820
+		MOV		ES,AX
+		MOV		CH,0			; 柱面0，这部分在书P47，里面有向下介绍
+		MOV		DH,0			; 磁头0
+		MOV		CL,2			; 扇区2
+; 重置读取失败的寄存器的值为0
+readloop:
+		MOV		SI,0			; 记录失败次数的寄存器为SI，赋值为0
+; 读入硬盘内容
+retry:
+		MOV		AH,0x02			; AH=0x02 : BIOS的2号函数，读盘
+		MOV		AL,1			; 1个扇区
+		MOV		BX,0
+		MOV		DL,0x00			; A驱动器
+		INT		0x13			; 调用磁盘BIOS
+		JNC		next			; 没出错的话就跳到next
+		ADD		SI,1			; 出错了就SI+1
+		CMP		SI,5			; 比较SI和5
+		JAE		error			; SI >= 5就直接跳到error
+		MOV		AH,0x00
+		MOV		DL,0x00			; A驱动器
+		INT		0x13			; 调用BIOS，用来重置驱动器
+		JMP		retry
+next:
+		MOV		AX,ES			; 将内存地址后移0x200
+		ADD		AX,0x0020
+		MOV		ES,AX			; 这里没有ADD ES,0x020这个指令，所以要稍微绕一下弯才能完成后移动作
+		ADD		CL,1			; CL+1
+		CMP		CL,18			; 比较CL和18
+		JBE		readloop		; 若CL <= 18则跳转到readloop
+		MOV		CL,1
+		ADD		DH,1
+		CMP		DH,2
+		JB		readloop		; 若DH < 2则跳转到readloop
+		MOV		DH,0
+		ADD		CH,1
+		CMP		CH,CYLS         ; 比较当前柱面
+		JB		readloop		; 若CH < CYLS，也就是还没到达指定的柱面10，则跳转到readloop，继续往下读
+
+; 进入我们的系统，跳转到hcos.sys所在位置
+
+		JMP		0xc200
+
+; 把报错信息放到寄存器
+error:
+		MOV		SI,msg
+; 用循环打印信息
 putloop:
 		MOV		AL,[SI]
 		ADD		SI,1			; 给SI寄存器加1
@@ -45,13 +96,14 @@ putloop:
 		MOV		BX,15			; 指定字符的颜色
 		INT		0x10			; 调用显卡的BIOS
 		JMP		putloop
+; 程序结束标签，这个必须要有，没有无法编译
 fin:
-		HLT						; 让CPU停止
-		JMP		fin				; 再跳回去，死循环，这样实现系统一直运行又不会把CPU烧了
-
+		HLT						; 进去就退出
+		JMP		fin				; 无限循环
+; 输出各个字节的信息
 msg:
 		DB		0x0a, 0x0a		; 换行两次
-		DB		"hello, world"
+		DB		"load error"    ; 输出的信息
 		DB		0x0a			; 换行
 		DB		0
 
