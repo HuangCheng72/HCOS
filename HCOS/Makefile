@@ -1,39 +1,74 @@
+TOOLPATH = tools/
+INCPATH  = tools/hcos01/
 
-# 默认动作
+MAKE     = $(TOOLPATH)make.exe -r
+NASK     = $(TOOLPATH)nask.exe
+CC1      = $(TOOLPATH)cc1.exe -I$(INCPATH) -Os -Wall -quiet
+GAS2NASK = $(TOOLPATH)gas2nask.exe -a
+OBJ2BIM  = $(TOOLPATH)obj2bim.exe
+BIM2HRB  = $(TOOLPATH)bim2hrb.exe
+RULEFILE = $(TOOLPATH)hcos01/hcos01.rul
+EDIMG    = $(TOOLPATH)edimg.exe
+IMGTOL   = $(TOOLPATH)imgtol.com
+COPY     = copy
+DEL      = del
+
+#默认动作
 
 default :
-	make.exe img
+	$(MAKE) img
 
-# 文件生成规则
+#文件生成规则
 
-ipl.bin : ipl.nas Makefile
-	nask.exe ipl.nas ipl.bin ipl.lst
+ipl10.bin : ipl10.nas Makefile
+	$(NASK) ipl10.nas ipl10.bin ipl10.lst
 
-hcos.img : ipl.bin Makefile
-	edimg.exe   imgin:fdimg0at.tek \
-		wbinimg src:ipl.bin len:512 from:0 to:0   imgout:hcos.img
+asmhead.bin : asmhead.nas Makefile
+	$(NASK) asmhead.nas asmhead.bin asmhead.lst
 
-# 常用命令行，我们用的是虚拟机，不能直接run
+bootpack.gas : bootpack.c Makefile
+	$(CC1) -o bootpack.gas bootpack.c
 
-asm :
-	make.exe -r ipl.bin
+bootpack.nas : bootpack.gas Makefile
+	$(GAS2NASK) bootpack.gas bootpack.nas
+
+bootpack.obj : bootpack.nas Makefile
+	$(NASK) bootpack.nas bootpack.obj bootpack.lst
+
+naskfunc.obj : naskfunc.nas Makefile
+	$(NASK) naskfunc.nas naskfunc.obj naskfunc.lst
+
+bootpack.bim : bootpack.obj naskfunc.obj Makefile
+	$(OBJ2BIM) @$(RULEFILE) out:bootpack.bim stack:3136k map:bootpack.map \
+		bootpack.obj naskfunc.obj
+# 3MB+64KB=3136KB
+
+bootpack.hrb : bootpack.bim Makefile
+	$(BIM2HRB) bootpack.bim bootpack.hrb 0
+
+hcos.sys : asmhead.bin bootpack.hrb Makefile
+	copy /B asmhead.bin+bootpack.hrb hcos.sys
+
+hcos.img : ipl10.bin hcos.sys Makefile
+	$(EDIMG)   imgin:tools/fdimg0at.tek \
+		wbinimg src:ipl10.bin len:512 from:0 to:0  copy from:hcos.sys to:@: imgout:hcos.img
+
+# 常用命令行
 
 img :
-	make.exe -r hcos.img
-
-#run :
-#	../z_tools/make.exe img
-#	copy helloos.img ..\z_tools\qemu\fdimage0.bin
-#	../z_tools/make.exe -C ../z_tools/qemu
-
-#install :
-#	../z_tools/make.exe img
-#	../z_tools/imgtol.com w a: helloos.img
+	$(MAKE) hcos.img
 
 clean :
-	-del ipl.bin
-	-del ipl.lst
+	-$(DEL) *.bin
+	-$(DEL) *.lst
+	-$(DEL) *.gas
+	-$(DEL) *.obj
+	-$(DEL) hcos.sys
+	-$(DEL) bootpack.nas
+	-$(DEL) bootpack.map
+	-$(DEL) bootpack.bim
+	-$(DEL) bootpack.hrb
 
 src_only :
-	make.exe clean
-	-del hcos.img
+	$(MAKE) clean
+	-$(DEL) hcos.img
