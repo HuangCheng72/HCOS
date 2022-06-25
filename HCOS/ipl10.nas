@@ -80,7 +80,7 @@ next:
 		JB		readloop		; 若CH < CYLS，也就是还没到达指定的柱面10，则跳转到readloop，继续往下读
 
 ; 进入我们的系统，跳转到hcos.sys所在位置
-
+        MOV		[0x0ff0],CH     ; 记录IPL读取的进度
 		JMP		0xc200
 
 ; 把报错信息放到寄存器
