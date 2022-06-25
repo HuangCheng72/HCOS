@@ -1,0 +1,24 @@
+format:
+	/* このセクションでリンクの方針を記述 */
+	code(align:1, logic:0x24,      file:0x24);
+	data(align:4, logic:stack_end, file:code_end);
+
+file:
+	/* このセクションでコマンドラインに書ききれなかった
+		.objファイル、.libファイルを記載 */
+	/* なお、このセクションはフルパスで書いてもよい。 */
+	/* 例：  c:/osask/gg00libc.lib;  */
+    /* 这里应该是指定编译文件什么的 */
+	/*../z_tools/haribote/harilibc.lib;*/
+	/*../z_tools/haribote/golibc.lib;*/
+    /* 修改如下 */
+    tools/hcos01/hcoslibc.lib;
+	tools/hcos01/golibc.lib;
+
+label:
+	/* 必ずリンクしなければいけないラベルを指定 */
+	/* エントリポイントを指定すればいいと思ってください */
+    /* 这里应该是指定程序入口 */
+	_HariStartup;
+
+	/* 上記3セクションの順序は入れ替えてはいけません! */
