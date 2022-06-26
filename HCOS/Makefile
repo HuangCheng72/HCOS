@@ -1,3 +1,5 @@
+OBJS_BOOTPACK = bootpack.obj naskfunc.obj hankaku.obj graphic.obj
+
 TOOLPATH = tools/
 INCPATH  = tools/hcos01/
 
@@ -20,7 +22,7 @@ DEL      = del
 default :
 	$(MAKE) img
 
-#文件生成规则
+#文件生成特殊规则
 
 ipl10.bin : ipl10.nas Makefile
 	$(NASK) ipl10.nas ipl10.bin ipl10.lst
@@ -28,27 +30,15 @@ ipl10.bin : ipl10.nas Makefile
 asmhead.bin : asmhead.nas Makefile
 	$(NASK) asmhead.nas asmhead.bin asmhead.lst
 
-bootpack.gas : bootpack.c Makefile
-	$(CC1) -o bootpack.gas bootpack.c
-
-bootpack.nas : bootpack.gas Makefile
-	$(GAS2NASK) bootpack.gas bootpack.nas
-
-bootpack.obj : bootpack.nas Makefile
-	$(NASK) bootpack.nas bootpack.obj bootpack.lst
-
-naskfunc.obj : naskfunc.nas Makefile
-	$(NASK) naskfunc.nas naskfunc.obj naskfunc.lst
-
 hankaku.bin : hankaku.txt Makefile
 	$(MAKEFONT) hankaku.txt hankaku.bin
 
 hankaku.obj : hankaku.bin Makefile
 	$(BIN2OBJ) hankaku.bin hankaku.obj _hankaku
 
-bootpack.bim : bootpack.obj naskfunc.obj hankaku.obj Makefile
+bootpack.bim : $(OBJS_BOOTPACK) Makefile
 	$(OBJ2BIM) @$(RULEFILE) out:bootpack.bim stack:3136k map:bootpack.map \
-		bootpack.obj naskfunc.obj hankaku.obj
+		$(OBJS_BOOTPACK)
 # 3MB+64KB=3136KB
 
 bootpack.hrb : bootpack.bim Makefile
@@ -61,6 +51,16 @@ hcos.img : ipl10.bin hcos.sys Makefile
 	$(EDIMG)   imgin:tools/fdimg0at.tek \
 		wbinimg src:ipl10.bin len:512 from:0 to:0  copy from:hcos.sys to:@: imgout:hcos.img
 
+# 一般规则
+%.gas : %.c Makefile
+	$(CC1) -o $*.gas $*.c
+
+%.nas : %.gas Makefile
+	$(GAS2NASK) $*.gas $*.nas
+
+%.obj : %.nas Makefile
+	$(NASK) $*.nas $*.obj $*.lst
+
 # 常用命令行
 
 img :
@@ -72,7 +72,6 @@ clean :
 	-$(DEL) *.gas
 	-$(DEL) *.obj
 	-$(DEL) hcos.sys
-	-$(DEL) bootpack.nas
 	-$(DEL) bootpack.map
 	-$(DEL) bootpack.bim
 	-$(DEL) bootpack.hrb
