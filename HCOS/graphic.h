@@ -1,4 +1,9 @@
+//naskfunc.nas中给出的函数
+#include "naskfunction.h"
+
 //下面是绘制GUI界面需要用到的函数 
+void init_palette(void); //初始化调色板 
+void set_palette(int start, int end, unsigned char *rgb); //设置调色板颜色 
 void boxfill8(unsigned char *vram, int xsize, unsigned char c, int x0, int y0, int x1, int y1); //对某一区域染色也就是绘制矩形，xsize是屏幕横轴的大小 
 void init_screen(char *vram, int x, int y); //初始化所有矩形，也就是绘图过程 
 void putfont8(char *vram, int xsize, int x, int y, char c, char *font); //绘制 8*16的点阵图，这里用来显示字符 
@@ -25,6 +30,8 @@ void putblock8_8(char *vram, int vxsize, int pxsize, int pysize, int px0, int py
 #define COL8_840084		13
 #define COL8_008484		14
 #define COL8_848484		15
+
+#define ADR_BOOTINFO	0x00000ff0
 
 
 //BOOTINFO结构体，其结构看asmhead.nas中已经定下来了
