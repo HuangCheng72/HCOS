@@ -1,11 +1,3 @@
-#include<stdio.h> 
-#include "graphic.h"
-//#include "int.h"
-#include "dsctbl.h"
-//naskfunc.nas中给出的函数
-#include "naskfunction.h"
-
-//这些是int.h中的内容 
 //下面是PIC各个管脚的地址
 //PIC0为主PIC，PIC1为从PIC 
 #define PIC0_ICW1		0x0020
@@ -20,6 +12,11 @@
 #define PIC1_ICW2		0x00a1
 #define PIC1_ICW3		0x00a1
 #define PIC1_ICW4		0x00a1
+//naskfunc.nas中给出的函数
+#include "naskfunction.h"
+
+//键盘鼠标处理，此处涉及到图形化操作要导入graphic
+#include "graphic.h"
  
 void init_pic(void); //初始化PIC
 //以下三个是中断处理程序 

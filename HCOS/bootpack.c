@@ -5,6 +5,14 @@ void HariMain(void){
 	struct BOOTINFO *binfo = (struct BOOTINFO *) 0x0ff0;
 	char s[40], mcursor[256]; //字符串和鼠标 
 	int mx, my;// 鼠标当前位置 
+	
+	//初始化GDT和IDT 
+	init_gdtidt();
+	//初始化PIC 
+	init_pic();
+	//执行STI指令之后，中断许可标志位变成1，CPU可以接受来自外部设备的中断，它是CLI的逆指令 
+	io_sti();
+	//初始化调色板 
 	init_palette();
 	
 	//以下就是绘图过程 
@@ -19,49 +27,13 @@ void HariMain(void){
 	sprintf(s, "(%d, %d)", mx, my);
 	putfonts8_asc(binfo->vram, binfo->scrnx, 0, 0, COL8_FFFFFF, s);
 	
-	//循环中断，防止退出 
-
+	//修改PIC的IMR，可以接受来自键盘和鼠标的中断 
+	io_out8(PIC0_IMR, 0xf9); /* PIC1とキーボードを許可(11111001) */
+	io_out8(PIC1_IMR, 0xef); /* マウスを許可(11101111) */
+	
+	
+	//循环中止，防止退出 
 	while(1) {
 		io_hlt();
 	}
-}
-
-void init_palette(void){
-	static unsigned char table_rgb[16 * 3] = {
-		0x00, 0x00, 0x00,	/*  0:黑 */
-		0xff, 0x00, 0x00,	/*  1:亮红 */
-		0x00, 0xff, 0x00,	/*  2:亮绿 */
-		0xff, 0xff, 0x00,	/*  3:亮黄 */
-		0x00, 0x00, 0xff,	/*  4:亮蓝 */
-		0xff, 0x00, 0xff,	/*  5:亮紫 */
-		0x00, 0xff, 0xff,	/*  6:浅亮蓝 */
-		0xff, 0xff, 0xff,	/*  7:白 */
-		0xc6, 0xc6, 0xc6,	/*  8:亮灰 */
-		0x84, 0x00, 0x00,	/*  9:暗红 */
-		0x00, 0x84, 0x00,	/* 10:暗绿 */
-		0x84, 0x84, 0x00,	/* 11:暗黄 */
-		0x00, 0x00, 0x84,	/* 12:暗青 */
-		0x84, 0x00, 0x84,	/* 13:暗紫色 */
-		0x00, 0x84, 0x84,	/* 14:浅暗蓝 */
-		0x84, 0x84, 0x84	/* 15:暗灰 */
-	};
-	set_palette(0, 15, table_rgb);
-	return;
-
-	/* C语言中的static char只能用于数据，相当于汇编中的DB */
-}
-
-void set_palette(int start, int end, unsigned char *rgb){
-	int i, eflags;
-	eflags = io_load_eflags();	/* 记录中断许可标志的值 */
-	io_cli(); 					/* 将许可标志设置为0，也就是禁止中断 */
-	io_out8(0x03c8, start);
-	for (i = start; i <= end; i++) {
-		io_out8(0x03c9, rgb[0] / 4);
-		io_out8(0x03c9, rgb[1] / 4);
-		io_out8(0x03c9, rgb[2] / 4);
-		rgb += 3;
-	}
-	io_store_eflags(eflags);	/* 恢复中断许可标志的值 */
-	return;
 }
