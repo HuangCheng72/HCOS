@@ -3,26 +3,33 @@
 void init_gdtidt(void){
 	//为什么设置这两个地址，其实是作者随便选的，因为我们现在对内存分布不是很熟悉，不要乱动，保持原状 
 	//其实只要是没使用过的地址，都可以用 
-	struct SEGMENT_DESCRIPTOR *gdt = (struct SEGMENT_DESCRIPTOR*) 0x00270000;
-	struct GATE_DESCRIPTOR *idt = (struct GATE_DESCRIPTOR*) 0x0026f8000;
+	//这两个地址已经设为常量放在头文件中 
+	struct SEGMENT_DESCRIPTOR *gdt = (struct SEGMENT_DESCRIPTOR *) ADR_GDT;
+	struct GATE_DESCRIPTOR    *idt = (struct GATE_DESCRIPTOR    *) ADR_IDT;
 	int i;
 	// GDT的初始化，直接把段号为0到8191的段信息，统统置0 
-	for (i = 0; i < 8192; i++) {
+	for (i = 0; i <= LIMIT_GDT / 8; i++) {
 		set_segmdesc(gdt + i, 0, 0, 0);
 	}
 	//单独设置段号为1和2的两个段
 	//段号为1的段，其上限值0xffffffff大小正好是4GB，正好是32位可以管理的内存上限，其基地址位0，表示整个CPU能管理的全部内存 
-	set_segmdesc(gdt + 1, 0xffffffff, 0x00000000, 0x4092);
+//	set_segmdesc(gdt + 1, 0xffffffff, 0x00000000, 0x4092);
 	//段号为2的段，其大小为512KB，这是给bootpack.hrb准备的 
-	set_segmdesc(gdt + 2, 0x0007ffff, 0x00280000, 0x409a);
+//	set_segmdesc(gdt + 2, 0x0007ffff, 0x00280000, 0x409a);
 	//将GDT信息写入gdtr寄存器，也就是我们设置的GDT信息存放的地址0x00270000 
-	load_gdtr(0xffff, 0x00270000);
+//	load_gdtr(0xffff, 0x00270000);
+
+	//常量写法 
+	set_segmdesc(gdt + 1, 0xffffffff,   0x00000000, AR_DATA32_RW);
+	set_segmdesc(gdt + 2, LIMIT_BOTPAK, ADR_BOTPAK, AR_CODE32_ER);
+	load_gdtr(LIMIT_GDT, ADR_GDT);
+	
 	// IDT的初始化，同GDT 
-	for (i = 0; i < 256; i++) {
+	for (i = 0; i <= LIMIT_IDT / 8; i++) {
 		set_gatedesc(idt + i, 0, 0, 0);
 	}
 	//将IDT信息写入专用于IDT的寄存器。 
-	load_idtr(0x07ff, 0x0026f800);
+	load_idtr(LIMIT_IDT, ADR_IDT);
 	
 	// IDT的设定
 	//以第一个为例子，意思就是asm_inthandler21函数注册在IDT的第0x21号位置，如果发生相应中断，就自动调用指定函数

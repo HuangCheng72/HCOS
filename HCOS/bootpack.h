@@ -5,6 +5,7 @@
 //naskfunc.nas中给出的函数
 #include "naskfunction.h"
 
+
 //这些是int.h中的内容 
 //下面是PIC各个管脚的地址
 //PIC0为主PIC，PIC1为从PIC 
