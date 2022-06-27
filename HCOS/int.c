@@ -22,25 +22,25 @@ void init_pic(void){
 
 	return;
 }
+#define PORT_KEYDAT		0x0060
+//键盘缓冲区
+struct FIFO8 keyfifo; 
 //来自PS/2键盘的中断
 void inthandler21(int *esp){
-    //一旦接收到键盘输入字符，系统即刻中断，然后在屏幕上打印字符串
-	struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
-	boxfill8(binfo->vram, binfo->scrnx, COL8_000000, 0, 0, 32 * 8 - 1, 15);
-	putfonts8_asc(binfo->vram, binfo->scrnx, 0, 0, COL8_FFFFFF, "INT 21 (IRQ-1) : PS/2 keyboard");
-	while(1) {
-		io_hlt();
-	}
+	io_out8(PIC0_OCW2, 0x61); //通知PIC，IRQ-01受理已经完成，这步不可省略 
+	unsigned char data = io_in8(PORT_KEYDAT); //从输入获取相关数据
+	fifo8_put(&keyfifo, data); //塞到缓冲区
+	return; 
 }
-
+//鼠标缓冲区 
+struct FIFO8 mousefifo;
 //来自PS/2鼠标的中断
 void inthandler2c(int *esp){
-	struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
-	boxfill8(binfo->vram, binfo->scrnx, COL8_000000, 0, 0, 32 * 8 - 1, 15);
-	putfonts8_asc(binfo->vram, binfo->scrnx, 0, 0, COL8_FFFFFF, "INT 2C (IRQ-12) : PS/2 mouse");
-	while(1) {
-		io_hlt();
-	}
+	io_out8(PIC1_OCW2, 0x64); //通知PIC，IRQ-12受理已经完成，这步不可省略 
+	io_out8(PIC0_OCW2, 0x62); //通知PIC，IRQ-02受理已经完成，这步不可省略 
+	unsigned char data = io_in8(PORT_KEYDAT); //从输入获取相关数据
+	fifo8_put(&mousefifo, data); //塞到缓冲区
+	return; 
 }
 
 void inthandler27(int *esp)

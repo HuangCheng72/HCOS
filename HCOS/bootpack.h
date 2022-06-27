@@ -2,6 +2,7 @@
 #include "graphic.h"
 //#include "int.h"
 #include "dsctbl.h"
+#include "fifo.h" 
 //naskfunc.nas中给出的函数
 #include "naskfunction.h"
 
@@ -27,3 +28,4 @@ void init_pic(void); //初始化PIC
 void inthandler21(int *esp);
 void inthandler2c(int *esp);
 void inthandler27(int *esp);
+
