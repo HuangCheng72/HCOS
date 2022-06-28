@@ -1,7 +1,4 @@
-#include "fifo.h"
-
-//Òç³ö±êÊ¶·û 
-#define FLAGS_OVERRUN		0x0001
+#include "bootpack.h"
 
 void fifo8_init(struct FIFO8 *fifo, int size, unsigned char *buf){
 	fifo->size = size;

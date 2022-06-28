@@ -23,10 +23,3 @@ struct GATE_DESCRIPTOR {
 void init_gdtidt(void); //初始化GDT和IDT 
 void set_segmdesc(struct SEGMENT_DESCRIPTOR *sd, unsigned int limit, int base, int ar); //设置段信息 
 void set_gatedesc(struct GATE_DESCRIPTOR *gd, int offset, int selector, int ar); //设置中断信息 
-
-//这两个是naskfunc.nas里面给出的汇编程序，用来把GDT和IDT的信息写入对应的特殊寄存器里面 
-//void load_gdtr(int limit, int addr);
-//void load_idtr(int limit, int addr);
-
-//naskfunc.nas中给出的函数
-#include "naskfunction.h"

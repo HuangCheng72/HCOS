@@ -1,14 +1,14 @@
 //这些都是naskfunc.nas给出的函数
-void io_hlt(void);
-void io_cli(void);
+void io_hlt(void); //停止，就是汇编的HLT
+void io_cli(void); //禁止CPU级别的中断，就是汇编的CLI
 void io_sti(void);
 void io_stihlt(void);
-int io_in8(int port);
-void io_out8(int port, int data);
-int io_load_eflags(void);
-void io_store_eflags(int eflags);
-void load_gdtr(int limit, int addr);
-void load_idtr(int limit, int addr);
+int io_in8(int port);  //IO输入八位数据
+void io_out8(int port, int data);   //IO输出八位数据
+int io_load_eflags(void);   //IO载入eflag
+void io_store_eflags(int eflags);   //IO存储eflag
+void load_gdtr(int limit, int addr);    //把信息存到gdtr寄存器
+void load_idtr(int limit, int addr);    //把信息存到idtr寄存器
 void asm_inthandler21(void);
 void asm_inthandler27(void);
 void asm_inthandler2c(void);

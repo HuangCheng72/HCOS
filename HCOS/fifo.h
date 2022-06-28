@@ -12,3 +12,6 @@ int fifo8_put(struct FIFO8 *fifo, unsigned char data);
 int fifo8_get(struct FIFO8 *fifo);
 //获取缓冲区中数据长度 
 int fifo8_status(struct FIFO8 *fifo);
+
+//溢出标识符 
+#define FLAGS_OVERRUN		0x0001
