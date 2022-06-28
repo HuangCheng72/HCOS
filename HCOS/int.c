@@ -21,25 +21,6 @@ void init_pic(void){
 
 	return;
 }
-//键盘缓冲区
-struct FIFO8 keyfifo; 
-//来自PS/2键盘的中断
-void inthandler21(int *esp){
-	io_out8(PIC0_OCW2, 0x61); //通知PIC，IRQ-01受理已经完成，这步不可省略 
-	unsigned char data = io_in8(PORT_KEYDAT); //从输入获取相关数据
-	fifo8_put(&keyfifo, data); //塞到缓冲区
-	return; 
-}
-//鼠标缓冲区 
-struct FIFO8 mousefifo;
-//来自PS/2鼠标的中断
-void inthandler2c(int *esp){
-	io_out8(PIC1_OCW2, 0x64); //通知PIC，IRQ-12受理已经完成，这步不可省略 
-	io_out8(PIC0_OCW2, 0x62); //通知PIC，IRQ-02受理已经完成，这步不可省略 
-	unsigned char data = io_in8(PORT_KEYDAT); //从输入获取相关数据
-	fifo8_put(&mousefifo, data); //塞到缓冲区
-	return; 
-}
 
 void inthandler27(int *esp)
 /* PIC0からの不完全割り込み対策 */

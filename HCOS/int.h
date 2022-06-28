@@ -14,7 +14,5 @@
 #define PIC1_ICW4		0x00a1
  
 void init_pic(void); //初始化PIC
-//以下三个是中断处理程序 
-void inthandler21(int *esp);
-void inthandler2c(int *esp);
+//以下是中断处理程序 
 void inthandler27(int *esp);
