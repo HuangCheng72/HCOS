@@ -1,4 +1,4 @@
-#include "dsctbl.h"
+#include "bootpack.h"
 
 void init_gdtidt(void){
 	//为什么设置这两个地址，其实是作者随便选的，因为我们现在对内存分布不是很熟悉，不要乱动，保持原状 

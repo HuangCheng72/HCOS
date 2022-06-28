@@ -1,4 +1,3 @@
-//#include "int.h" 
 #include "bootpack.h"
 
 //初始化PIC 
@@ -22,7 +21,6 @@ void init_pic(void){
 
 	return;
 }
-#define PORT_KEYDAT		0x0060
 //键盘缓冲区
 struct FIFO8 keyfifo; 
 //来自PS/2键盘的中断

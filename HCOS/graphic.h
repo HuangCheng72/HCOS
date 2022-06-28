@@ -1,6 +1,3 @@
-//naskfunc.nas中给出的函数
-#include "naskfunction.h"
-
 //下面是绘制GUI界面需要用到的函数 
 void init_palette(void); //初始化调色板 
 void set_palette(int start, int end, unsigned char *rgb); //设置调色板颜色 
