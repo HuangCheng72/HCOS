@@ -1,14 +1,17 @@
-//è¿™äº›éƒ½æ˜¯naskfunc.nasç»™å‡ºçš„å‡½æ•°
-void io_hlt(void); //åœæ­¢ï¼Œå°±æ˜¯æ±‡ç¼–çš„HLT
-void io_cli(void); //ç¦æ­¢CPUçº§åˆ«çš„ä¸­æ–­ï¼Œå°±æ˜¯æ±‡ç¼–çš„CLI
+//ÕâĞ©¶¼ÊÇnaskfunc.nas¸ø³öµÄº¯Êı
+void io_hlt(void); //Í£Ö¹£¬¾ÍÊÇ»ã±àµÄHLT
+void io_cli(void); //½ûÖ¹CPU¼¶±ğµÄÖĞ¶Ï£¬¾ÍÊÇ»ã±àµÄCLI
 void io_sti(void);
 void io_stihlt(void);
-int io_in8(int port);  //IOè¾“å…¥å…«ä½æ•°æ®
-void io_out8(int port, int data);   //IOè¾“å‡ºå…«ä½æ•°æ®
-int io_load_eflags(void);   //IOè½½å…¥eflag
-void io_store_eflags(int eflags);   //IOå­˜å‚¨eflag
-void load_gdtr(int limit, int addr);    //æŠŠä¿¡æ¯å­˜åˆ°gdtrå¯„å­˜å™¨
-void load_idtr(int limit, int addr);    //æŠŠä¿¡æ¯å­˜åˆ°idtrå¯„å­˜å™¨
+int io_in8(int port);  //IOÊäÈë°ËÎ»Êı¾İ
+void io_out8(int port, int data);   //IOÊä³ö°ËÎ»Êı¾İ
+int io_load_eflags(void);   //IOÔØÈëeflag
+void io_store_eflags(int eflags);   //IO´æ´¢eflag
+void load_gdtr(int limit, int addr);    //°ÑĞÅÏ¢´æµ½gdtr¼Ä´æÆ÷
+void load_idtr(int limit, int addr);    //°ÑĞÅÏ¢´æµ½idtr¼Ä´æÆ÷
+int load_cr0(void);
+void store_cr0(int cr0);
 void asm_inthandler21(void);
 void asm_inthandler27(void);
 void asm_inthandler2c(void);
+unsigned int memtest_sub(unsigned int start, unsigned int end);
