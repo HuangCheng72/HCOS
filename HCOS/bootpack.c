@@ -9,8 +9,14 @@ void HariMain(void){
 	struct MOUSE_DEC mdec;
 	//内存管理结构体
 	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR; 
-	char s[40], mcursor[256]; //字符串和鼠标 
-	int mx, my;// 鼠标当前位置 
+	//图层管理结构体 
+	struct SHTCTL *shtctl;
+	struct SHEET *sht_back, *sht_mouse;
+	
+	char s[40],keybuf[32], mousebuf[128]; //字符串和键盘鼠标缓冲区
+	//buf_mouse就是之前的mcursor
+	unsigned char *buf_back, buf_mouse[256];
+	int mx, my, i;// 鼠标当前位置，用于存储获取缓冲区的数据的变量 
 	
 	//初始化GDT和IDT 
 	init_gdtidt();
@@ -18,8 +24,7 @@ void HariMain(void){
 	init_pic();
 	//执行STI指令之后，中断许可标志位变成1，CPU可以接受来自外部设备的中断，它是CLI的逆指令 
 	io_sti();
-	//初始化缓冲区
-	char keybuf[32], mousebuf[128];
+	//初始化缓冲区 
 	fifo8_init(&keyfifo, 32, keybuf);
 	fifo8_init(&mousefifo, 128, mousebuf);
 	//修改PIC的IMR，可以接受来自键盘和鼠标的中断 
@@ -37,14 +42,22 @@ void HariMain(void){
 	
 	//初始化调色板 
 	init_palette();
-	
 	//以下就是绘图过程 
-	init_screen(binfo->vram, binfo->scrnx, binfo->scrny);
+	shtctl = shtctl_init(memman, binfo->vram, binfo->scrnx, binfo->scrny);
+	sht_back  = sheet_alloc(shtctl);
+	sht_mouse = sheet_alloc(shtctl);
+	buf_back  = (unsigned char *) memman_alloc_4k(memman, binfo->scrnx * binfo->scrny);
+	sheet_setbuf(sht_back, buf_back, binfo->scrnx, binfo->scrny, -1); /* 没有透明色 */
+	sheet_setbuf(sht_mouse, buf_mouse, 16, 16, 99);//透明色号99 
+	init_screen8(buf_back, binfo->scrnx, binfo->scrny);
+	init_mouse_cursor8(buf_mouse, 99);//背景色号99 
+	sheet_slide(shtctl, sht_back, 0, 0);
 	//打印鼠标并显示尖端所指向的位置坐标 
 	mx = (binfo->scrnx - 16) / 2; /* 屏幕中心位置计算，鼠标的打印起点要在屏幕中心位置往左上一点 */
 	my = (binfo->scrny - 28 - 16) / 2;
-	init_mouse_cursor8(mcursor, COL8_008484);
-	putblock8_8(binfo->vram, binfo->scrnx, 16, 16, mx, my, mcursor, 16);
+	sheet_slide(shtctl, sht_mouse, mx, my);
+	sheet_updown(shtctl, sht_back,  0);
+	sheet_updown(shtctl, sht_mouse, 1);
 	//打印坐标到字符串 
 	sprintf(s, "(%d, %d)", mx, my);
 	putfonts8_asc(binfo->vram, binfo->scrnx, 0, 0, COL8_FFFFFF, s);
@@ -52,9 +65,7 @@ void HariMain(void){
 	sprintf(s, "memory %dMB   free : %dKB",
 			memtotal / (1024 * 1024), memman_total(memman) / 1024);
 	putfonts8_asc(binfo->vram, binfo->scrnx, 0, 32, COL8_FFFFFF, s);
-	
-	int i;//用于存储获取缓冲区的数据
-	
+	sheet_refresh(shtctl, sht_back, 0, 0, binfo->scrnx, 48);
 	
 	//循环中止，防止退出 
 	while(1) {
@@ -68,6 +79,7 @@ void HariMain(void){
 				sprintf(s, "%02X", i);
 				boxfill8(binfo->vram, binfo->scrnx, COL8_008484,  0, 16, 15, 31);
 				putfonts8_asc(binfo->vram, binfo->scrnx, 0, 16, COL8_FFFFFF, s);
+				sheet_refresh(shtctl, sht_back, 0, 16, 16, 32);
 			} else if (fifo8_status(&mousefifo) != 0) {
 				i = fifo8_get(&mousefifo);
 				io_sti();
@@ -86,12 +98,11 @@ void HariMain(void){
 						//如果鼠标滑轮键被按下 
 						s[2] = 'C';
 					}
-					boxfill8(binfo->vram, binfo->scrnx, COL8_008484, 32, 16, 32 + 15 * 8 - 1, 31);
-					putfonts8_asc(binfo->vram, binfo->scrnx, 32, 16, COL8_FFFFFF, s);
+					boxfill8(buf_back, binfo->scrnx, COL8_008484, 32, 16, 32 + 15 * 8 - 1, 31);
+					putfonts8_asc(buf_back, binfo->scrnx, 32, 16, COL8_FFFFFF, s);
+					sheet_refresh(shtctl, sht_back, 32, 16, 32 + 15 * 8, 32);
 					//开始移动鼠标指针
-					//首先用一个矩形把这个从鼠标指针尖端开始往右往下的16*16区域给覆盖了，注意背景色
-					boxfill8(binfo->vram, binfo->scrnx, COL8_008484, mx, my, mx + 15, my + 15);
-					//然后计算鼠标指针位置
+					//计算鼠标指针位置
 					//基位置+偏移量 
 					mx += mdec.x;
 					my += mdec.y;
@@ -109,14 +120,12 @@ void HariMain(void){
 					if (my > binfo->scrny - 16) {
 						my = binfo->scrny - 16;
 					}
-					//可以完整绘制，重复之前的流程，绘制鼠标如下 
-					putblock8_8(binfo->vram, binfo->scrnx, 16, 16, mx, my, mcursor, 16);
-					//打印坐标到字符串 
+					//可以完整绘制，重复之前的流程，打印坐标到字符串 
 					sprintf(s, "(%3d, %3d)", mx, my);
-					//打印之前先把原来的坐标盖住
-					boxfill8(binfo->vram, binfo->scrnx, COL8_008484, 0, 0, 79, 15);
-					//打印新的字符串到屏幕上 
-					putfonts8_asc(binfo->vram, binfo->scrnx, 0, 0, COL8_FFFFFF, s);
+					boxfill8(buf_back, binfo->scrnx, COL8_008484, 0, 0, 79, 15); //打印之前先把原来的坐标盖住
+					putfonts8_asc(buf_back, binfo->scrnx, 0, 0, COL8_FFFFFF, s); //打印新的字符串到屏幕上 
+					sheet_refresh(shtctl, sht_back, 0, 0, 80, 16);
+					sheet_slide(shtctl, sht_mouse, mx, my);
 				}
 			}
 		}

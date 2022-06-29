@@ -2,7 +2,7 @@
 void init_palette(void); //初始化调色板 
 void set_palette(int start, int end, unsigned char *rgb); //设置调色板颜色 
 void boxfill8(unsigned char *vram, int xsize, unsigned char c, int x0, int y0, int x1, int y1); //对某一区域染色也就是绘制矩形，xsize是屏幕横轴的大小 
-void init_screen(char *vram, int x, int y); //初始化所有矩形，也就是绘图过程 
+void init_screen8(char *vram, int x, int y); //初始化所有矩形，也就是绘图过程 
 void putfont8(char *vram, int xsize, int x, int y, char c, char *font); //绘制 8*16的点阵图，这里用来显示字符 
 void putfont16(char *vram, int xsize, int x, int y, char c, char *font); //绘制 16*16的点阵图，这里用来显示汉字 
 void putfonts8_asc(char *vram, int xsize, int x, int y, char c, unsigned char *s);// 打印半角字符串 

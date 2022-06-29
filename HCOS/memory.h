@@ -17,3 +17,5 @@ void memman_init(struct MEMMAN *man);//内存管理初始化
 unsigned int memman_total(struct MEMMAN *man);//计算可用内存总量 
 unsigned int memman_alloc(struct MEMMAN *man, unsigned int size);//申请内存 
 int memman_free(struct MEMMAN *man, unsigned int addr, unsigned int size);//释放内存 
+unsigned int memman_alloc_4k(struct MEMMAN *man, unsigned int size);
+int memman_free_4k(struct MEMMAN *man, unsigned int addr, unsigned int size);
