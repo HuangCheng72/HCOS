@@ -38,8 +38,6 @@ void HariMain(void){
 	memman_init(memman);
 	memman_free(memman, 0x00001000, 0x0009e000); /* 0x00001000 - 0x0009efff */
 	memman_free(memman, 0x00400000, memtotal - 0x00400000);
-	
-	
 	//初始化调色板 
 	init_palette();
 	//以下就是绘图过程 
@@ -62,9 +60,8 @@ void HariMain(void){
 	sprintf(s, "(%d, %d)", mx, my);
 	putfonts8_asc(binfo->vram, binfo->scrnx, 0, 0, COL8_FFFFFF, s);
 	
-	sprintf(s, "memory %dMB   free : %dKB",
-			memtotal / (1024 * 1024), memman_total(memman) / 1024);
-	putfonts8_asc(binfo->vram, binfo->scrnx, 0, 32, COL8_FFFFFF, s);
+	sprintf(s, "memory %dMB   free : %dKB", memtotal / (1024 * 1024), memman_total(memman) / 1024);
+	putfonts8_asc(binfo->vram, binfo->scrnx, 64, 64, COL8_FFFFFF, s);
 	sheet_refresh(shtctl, sht_back, 0, 0, binfo->scrnx, 48);
 	
 	//循环中止，防止退出 
