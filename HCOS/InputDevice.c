@@ -22,7 +22,7 @@ void inthandler2c(int *esp){
 
 void wait_KBC_sendready(void){
 	//等待键盘控制电路准备完毕 
-	while(1){
+	for(;;){
 		if ((io_in8(PORT_KEYSTA) & KEYSTA_SEND_NOTREADY) == 0) {
 			break;
 		}

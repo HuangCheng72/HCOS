@@ -6,5 +6,6 @@
 #include "InputDevice.h" 
 #include "memory.h"
 #include "sheet.h"
+#include "timer.h" 
 //naskfunc.nas中给出的函数
 #include "naskfunction.h"

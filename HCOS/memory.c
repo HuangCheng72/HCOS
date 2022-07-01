@@ -101,8 +101,7 @@ int memman_free(struct MEMMAN *man, unsigned int addr, unsigned int size){
 	if(ptr == 0){
 		//特殊情况特殊处理
 		//1.第一次释放内存，可用链表中一个结点都无
-		//2.释放的结点大于结点中最末尾的地址  
-		//把可用链表头结点的next指针指向我们要使用的新节点 
+		//把可用链表头结点的next指针指向我们要使用的新节点
 		man->free[MEMMAN_FREES].next = man->free[MEMMAN_FREES+1].next;
 		//把新节点从空余链表中分离出来
 		man->free[MEMMAN_FREES+1].next = man->free[MEMMAN_FREES+1].next->next;
@@ -111,12 +110,13 @@ int memman_free(struct MEMMAN *man, unsigned int addr, unsigned int size){
 		ptr->addr = addr;
 		ptr->size = size;
 		ptr->next = 0;
-		ptr->pre = 0;//这么做是到时候不要把头结点纳入范围去合并
+		ptr->pre = 0;//这么做是到时候不要把头结点纳入范围去合并，只有这个不同 
 		//更新尾指针 
 		man->free[MEMMAN_FREES+1].pre = ptr;
 		man->frees++;//统计信息更新 
 		return 0;
 	}
+	//查找相应的地址位置（RBT就是应用在这里）
 	while(ptr){
 		//因为是按顺序排序，所以一旦ptr->addr大于addr，说明这个结点的pre就是我们这个内存的归还位置 
 		if (ptr->addr > addr) {
@@ -124,10 +124,11 @@ int memman_free(struct MEMMAN *man, unsigned int addr, unsigned int size){
 		}
 		ptr = ptr->next;
 	}
+	//用二分查找进行改进，需要开始时即设立相应的指针数组，这里觉得还不如直接上RBT改进 
 	if(ptr == 0){
 		//特殊情况特殊处理
 		//2.释放的结点大于结点中最末尾的地址，要更新尾指针 
-		//把可ptr指向我们要使用的新节点
+		//把ptr指向我们要使用的新节点
 		ptr = man->free[MEMMAN_FREES+1].next;
 		//把新节点从空余链表中分离出来
 		man->free[MEMMAN_FREES+1].next = man->free[MEMMAN_FREES+1].next->next;
@@ -136,8 +137,8 @@ int memman_free(struct MEMMAN *man, unsigned int addr, unsigned int size){
 		ptr->size = size;
 		//链接到尾结点后面 
 		ptr->next = 0;
-		ptr->pre = man->free[MEMMAN_FREES+1].pre;
-		ptr->pre->next = ptr; 
+		ptr->pre = man->free[MEMMAN_FREES+1].pre;//连接到之前的尾结点 
+		ptr->pre->next = ptr; //之前的尾结点指向自身 
 		//更新尾指针 
 		man->free[MEMMAN_FREES+1].pre = ptr;
 		man->frees++;//统计信息更新 

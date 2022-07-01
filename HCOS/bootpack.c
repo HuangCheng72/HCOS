@@ -2,21 +2,30 @@
 
 extern struct FIFO8 keyfifo, mousefifo;//两个缓冲区 
 
+extern struct TIMERCTL timerctl; //定时计次器 
+
+void make_window8(unsigned char *buf, int xsize, int ysize, char *title);
+
 void HariMain(void){
 	//染色区域指针 ，直接指针指向我们指定显示信息存放的地址 
-	struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO; 
+	struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
+	//字符串，各个缓冲区所用的数组 
+	char s[40], keybuf[32], mousebuf[128];
+	//鼠标的x，y坐标，以及变量i存放从缓冲区中读取的数据 
+	int mx, my, i;
+//	unsigned int memtotal, count = 0;//内存大小，计数器 
+	unsigned int memtotal;//内存大小
 	//鼠标信息结构体，以后鼠标信息就靠它来描述 
 	struct MOUSE_DEC mdec;
 	//内存管理结构体
-	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR; 
+	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
 	//图层管理结构体 
 	struct SHTCTL *shtctl;
-	struct SHEET *sht_back, *sht_mouse;
+	//三个图层的结构体 
+	struct SHEET *sht_back, *sht_mouse, *sht_win;
 	
-	char s[40],keybuf[32], mousebuf[128]; //字符串和键盘鼠标缓冲区
-	//buf_mouse就是之前的mcursor
-	unsigned char *buf_back, buf_mouse[256];
-	int mx, my, i;// 鼠标当前位置，用于存储获取缓冲区的数据的变量 
+	//buf_mouse就是之前的mcursor，背景，鼠标，窗口的绘制数据 
+	unsigned char *buf_back, buf_mouse[256], *buf_win;
 	
 	//初始化GDT和IDT 
 	init_gdtidt();
@@ -27,56 +36,71 @@ void HariMain(void){
 	//初始化缓冲区 
 	fifo8_init(&keyfifo, 32, keybuf);
 	fifo8_init(&mousefifo, 128, mousebuf);
+	//初始化定时器 
+	init_pit();
 	//修改PIC的IMR，可以接受来自键盘和鼠标的中断 
-	io_out8(PIC0_IMR, 0xf9); //开放PIC1和键盘中断（11111001）权限 
+	io_out8(PIC0_IMR, 0xf8); //开放PIC1和键盘中断（11111000）权限 （定时器进来要开放新权限） 
 	io_out8(PIC1_IMR, 0xef); //开放鼠标中断(11101111) 权限 
-	
-	init_keyboard();//初始化键盘 
+
+	init_keyboard();//初始化键盘  
 	enable_mouse(&mdec);//使鼠标可用，把鼠标结构体指针传进去 
-	
-	unsigned int memtotal = memtest(0x00400000, 0xbfffffff);
+	memtotal = memtest(0x00400000, 0xbfffffff);
 	memman_init(memman);
 	memman_free(memman, 0x00001000, 0x0009e000); /* 0x00001000 - 0x0009efff */
 	memman_free(memman, 0x00400000, memtotal - 0x00400000);
+	
 	//初始化调色板 
 	init_palette();
 	//以下就是绘图过程 
 	shtctl = shtctl_init(memman, binfo->vram, binfo->scrnx, binfo->scrny);
 	sht_back  = sheet_alloc(shtctl);
 	sht_mouse = sheet_alloc(shtctl);
+	sht_win   = sheet_alloc(shtctl);
 	buf_back  = (unsigned char *) memman_alloc_4k(memman, binfo->scrnx * binfo->scrny);
-	sheet_setbuf(sht_back, buf_back, binfo->scrnx, binfo->scrny, -1); /* 没有透明色 */
-	sheet_setbuf(sht_mouse, buf_mouse, 16, 16, 99);//透明色号99 
+	buf_win   = (unsigned char *) memman_alloc_4k(memman, 160 * 52);
+	sheet_setbuf(sht_back, buf_back, binfo->scrnx, binfo->scrny, -1);/* 没有透明色 */
+	sheet_setbuf(sht_mouse, buf_mouse, 16, 16, 99); //透明色号99 
+	sheet_setbuf(sht_win, buf_win, 160, 52, -1); /* 没有透明色 */
 	init_screen8(buf_back, binfo->scrnx, binfo->scrny);
 	init_mouse_cursor8(buf_mouse, 99);//背景色号99 
-	sheet_slide(shtctl, sht_back, 0, 0);
+	//绘制窗口 
+	make_window8(buf_win, 160, 52, "counter");
+	sheet_slide(sht_back, 0, 0);
 	//打印鼠标并显示尖端所指向的位置坐标 
-	mx = (binfo->scrnx - 16) / 2; /* 屏幕中心位置计算，鼠标的打印起点要在屏幕中心位置往左上一点 */
+	mx = (binfo->scrnx - 16) / 2; //屏幕中心位置计算，鼠标的打印起点要在屏幕中心位置往左上一点
 	my = (binfo->scrny - 28 - 16) / 2;
-	sheet_slide(shtctl, sht_mouse, mx, my);
-	sheet_updown(shtctl, sht_back,  0);
-	sheet_updown(shtctl, sht_mouse, 1);
+	sheet_slide(sht_mouse, mx, my);
+	sheet_slide(sht_win, 80, 72);
+	sheet_updown(sht_back,  0);
+	sheet_updown(sht_win,   1);
+	sheet_updown(sht_mouse, 2);
 	//打印坐标到字符串 
-	sprintf(s, "(%d, %d)", mx, my);
-	putfonts8_asc(binfo->vram, binfo->scrnx, 0, 0, COL8_FFFFFF, s);
-	
+	sprintf(s, "(%3d, %3d)", mx, my);
+	putfonts8_asc(buf_back, binfo->scrnx, 0, 0, COL8_FFFFFF, s);
+	//打印内存信息 
 	sprintf(s, "memory %dMB   free : %dKB", memtotal / (1024 * 1024), memman_total(memman) / 1024);
-	putfonts8_asc(binfo->vram, binfo->scrnx, 64, 64, COL8_FFFFFF, s);
-	sheet_refresh(shtctl, sht_back, 0, 0, binfo->scrnx, 48);
-	
-	//循环中止，防止退出 
-	while(1) {
+	putfonts8_asc(buf_back, binfo->scrnx, 0, 32, COL8_FFFFFF, s);
+	sheet_refresh(sht_back, 0, 0, binfo->scrnx, 48);
+
+	for (;;) {
+//		count++;
+//		sprintf(s, "%010d", count);
+		sprintf(s, "%010d", timerctl.count);//输出计次器计时数据 
+		boxfill8(buf_win, 160, COL8_C6C6C6, 40, 28, 119, 43);
+		putfonts8_asc(buf_win, 160, 40, 28, COL8_000000, s);
+		sheet_refresh(sht_win, 40, 28, 120, 44);
+
 		io_cli(); //禁止中断，打印的时候不能中断 
 		if (fifo8_status(&keyfifo) + fifo8_status(&mousefifo) == 0) {
-			io_stihlt();
+			io_sti();
 		} else {
 			if (fifo8_status(&keyfifo) != 0) {
 				i = fifo8_get(&keyfifo);
 				io_sti();
 				sprintf(s, "%02X", i);
-				boxfill8(binfo->vram, binfo->scrnx, COL8_008484,  0, 16, 15, 31);
-				putfonts8_asc(binfo->vram, binfo->scrnx, 0, 16, COL8_FFFFFF, s);
-				sheet_refresh(shtctl, sht_back, 0, 16, 16, 32);
+				boxfill8(buf_back, binfo->scrnx, COL8_008484,  0, 16, 15, 31);
+				putfonts8_asc(buf_back, binfo->scrnx, 0, 16, COL8_FFFFFF, s);
+				sheet_refresh(sht_back, 0, 16, 16, 32);
 			} else if (fifo8_status(&mousefifo) != 0) {
 				i = fifo8_get(&mousefifo);
 				io_sti();
@@ -92,15 +116,15 @@ void HariMain(void){
 						s[3] = 'R';
 					}
 					if ((mdec.btn & 0x04) != 0) {
-						//如果鼠标滑轮键被按下 
+						//如果鼠标中键被按下 
 						s[2] = 'C';
 					}
 					boxfill8(buf_back, binfo->scrnx, COL8_008484, 32, 16, 32 + 15 * 8 - 1, 31);
 					putfonts8_asc(buf_back, binfo->scrnx, 32, 16, COL8_FFFFFF, s);
-					sheet_refresh(shtctl, sht_back, 32, 16, 32 + 15 * 8, 32);
+					sheet_refresh(sht_back, 32, 16, 32 + 15 * 8, 32);
 					//开始移动鼠标指针
 					//计算鼠标指针位置
-					//基位置+偏移量 
+					//基位置+偏移量
 					mx += mdec.x;
 					my += mdec.y;
 					//防止越界 
@@ -110,21 +134,69 @@ void HariMain(void){
 					if (my < 0) {
 						my = 0;
 					}
-					//是否能完整绘制 
-					if (mx > binfo->scrnx - 16) {
-						mx = binfo->scrnx - 16;
+					//越界条件 
+					if (mx > binfo->scrnx - 1) {
+						mx = binfo->scrnx - 1;
 					}
-					if (my > binfo->scrny - 16) {
-						my = binfo->scrny - 16;
+					if (my > binfo->scrny - 1) {
+						my = binfo->scrny - 1;
 					}
-					//可以完整绘制，重复之前的流程，打印坐标到字符串 
 					sprintf(s, "(%3d, %3d)", mx, my);
 					boxfill8(buf_back, binfo->scrnx, COL8_008484, 0, 0, 79, 15); //打印之前先把原来的坐标盖住
 					putfonts8_asc(buf_back, binfo->scrnx, 0, 0, COL8_FFFFFF, s); //打印新的字符串到屏幕上 
-					sheet_refresh(shtctl, sht_back, 0, 0, 80, 16);
-					sheet_slide(shtctl, sht_mouse, mx, my);
+					sheet_refresh(sht_back, 0, 0, 80, 16);
+					sheet_slide(sht_mouse, mx, my);
 				}
 			}
 		}
 	}
 }
+
+void make_window8(unsigned char *buf, int xsize, int ysize, char *title){
+	static char closebtn[14][16] = {
+		"OOOOOOOOOOOOOOO@",
+		"OQQQQQQQQQQQQQ$@",
+		"OQQQQQQQQQQQQQ$@",
+		"OQQQ@@QQQQ@@QQ$@",
+		"OQQQQ@@QQ@@QQQ$@",
+		"OQQQQQ@@@@QQQQ$@",
+		"OQQQQQQ@@QQQQQ$@",
+		"OQQQQQ@@@@QQQQ$@",
+		"OQQQQ@@QQ@@QQQ$@",
+		"OQQQ@@QQQQ@@QQ$@",
+		"OQQQQQQQQQQQQQ$@",
+		"OQQQQQQQQQQQQQ$@",
+		"O$$$$$$$$$$$$$$@",
+		"@@@@@@@@@@@@@@@@"
+	};
+	int x, y;
+	char c;
+	boxfill8(buf, xsize, COL8_C6C6C6, 0,         0,         xsize - 1, 0        );
+	boxfill8(buf, xsize, COL8_FFFFFF, 1,         1,         xsize - 2, 1        );
+	boxfill8(buf, xsize, COL8_C6C6C6, 0,         0,         0,         ysize - 1);
+	boxfill8(buf, xsize, COL8_FFFFFF, 1,         1,         1,         ysize - 2);
+	boxfill8(buf, xsize, COL8_848484, xsize - 2, 1,         xsize - 2, ysize - 2);
+	boxfill8(buf, xsize, COL8_000000, xsize - 1, 0,         xsize - 1, ysize - 1);
+	boxfill8(buf, xsize, COL8_C6C6C6, 2,         2,         xsize - 3, ysize - 3);
+	boxfill8(buf, xsize, COL8_000084, 3,         3,         xsize - 4, 20       );
+	boxfill8(buf, xsize, COL8_848484, 1,         ysize - 2, xsize - 2, ysize - 2);
+	boxfill8(buf, xsize, COL8_000000, 0,         ysize - 1, xsize - 1, ysize - 1);
+	putfonts8_asc(buf, xsize, 24, 4, COL8_FFFFFF, title);
+	for (y = 0; y < 14; y++) {
+		for (x = 0; x < 16; x++) {
+			c = closebtn[y][x];
+			if (c == '@') {
+				c = COL8_000000;
+			} else if (c == '$') {
+				c = COL8_848484;
+			} else if (c == 'Q') {
+				c = COL8_C6C6C6;
+			} else {
+				c = COL8_FFFFFF;
+			}
+			buf[(5 + y) * xsize + (xsize - 21 + x)] = c;
+		}
+	}
+	return;
+}
+

@@ -11,6 +11,7 @@ void load_gdtr(int limit, int addr);    //把信息存到gdtr寄存器
 void load_idtr(int limit, int addr);    //把信息存到idtr寄存器
 int load_cr0(void);
 void store_cr0(int cr0);
+void asm_inthandler20(void);
 void asm_inthandler21(void);
 void asm_inthandler27(void);
 void asm_inthandler2c(void);
