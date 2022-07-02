@@ -2,18 +2,19 @@
 
 extern struct FIFO8 keyfifo, mousefifo;//两个缓冲区 
 
-extern struct TIMERCTL timerctl; //定时计次器 
-
 void make_window8(unsigned char *buf, int xsize, int ysize, char *title);
 
 void HariMain(void){
 	//染色区域指针 ，直接指针指向我们指定显示信息存放的地址 
 	struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
+	//定时器缓冲区
+	struct FIFO8 timerfifo, timerfifo2, timerfifo3;
 	//字符串，各个缓冲区所用的数组 
-	char s[40], keybuf[32], mousebuf[128];
+	char s[40], keybuf[32], mousebuf[128], timerbuf[8], timerbuf2[8], timerbuf3[8];
+	//三个定时器指针 
+	struct TIMER *timer, *timer2, *timer3;
 	//鼠标的x，y坐标，以及变量i存放从缓冲区中读取的数据 
 	int mx, my, i;
-//	unsigned int memtotal, count = 0;//内存大小，计数器 
 	unsigned int memtotal;//内存大小
 	//鼠标信息结构体，以后鼠标信息就靠它来描述 
 	struct MOUSE_DEC mdec;
@@ -37,10 +38,24 @@ void HariMain(void){
 	fifo8_init(&keyfifo, 32, keybuf);
 	fifo8_init(&mousefifo, 128, mousebuf);
 	//初始化定时器 
-	init_pit();
+	init_pit(); 
 	//修改PIC的IMR，可以接受来自键盘和鼠标的中断 
 	io_out8(PIC0_IMR, 0xf8); //开放PIC1和键盘中断（11111000）权限 （定时器进来要开放新权限） 
 	io_out8(PIC1_IMR, 0xef); //开放鼠标中断(11101111) 权限 
+	
+	//设置定时器缓冲区和定时器属性 
+	fifo8_init(&timerfifo, 8, timerbuf);
+	timer = timer_alloc();
+	timer_init(timer, &timerfifo, 1);
+	timer_settime(timer, 1000);
+	fifo8_init(&timerfifo2, 8, timerbuf2);
+	timer2 = timer_alloc();
+	timer_init(timer2, &timerfifo2, 1);
+	timer_settime(timer2, 300);
+	fifo8_init(&timerfifo3, 8, timerbuf3);
+	timer3 = timer_alloc();
+	timer_init(timer3, &timerfifo3, 1);
+	timer_settime(timer3, 50);
 
 	init_keyboard();//初始化键盘  
 	enable_mouse(&mdec);//使鼠标可用，把鼠标结构体指针传进去 
@@ -83,15 +98,13 @@ void HariMain(void){
 	sheet_refresh(sht_back, 0, 0, binfo->scrnx, 48);
 
 	for (;;) {
-//		count++;
-//		sprintf(s, "%010d", count);
 		sprintf(s, "%010d", timerctl.count);//输出计次器计时数据 
 		boxfill8(buf_win, 160, COL8_C6C6C6, 40, 28, 119, 43);
 		putfonts8_asc(buf_win, 160, 40, 28, COL8_000000, s);
 		sheet_refresh(sht_win, 40, 28, 120, 44);
 
 		io_cli(); //禁止中断，打印的时候不能中断 
-		if (fifo8_status(&keyfifo) + fifo8_status(&mousefifo) == 0) {
+		if (fifo8_status(&keyfifo) + fifo8_status(&mousefifo) + fifo8_status(&timerfifo) + fifo8_status(&timerfifo2) + fifo8_status(&timerfifo3) == 0) {
 			io_sti();
 		} else {
 			if (fifo8_status(&keyfifo) != 0) {
@@ -147,6 +160,28 @@ void HariMain(void){
 					sheet_refresh(sht_back, 0, 0, 80, 16);
 					sheet_slide(sht_mouse, mx, my);
 				}
+			}else if(fifo8_status(&timerfifo) != 0) {
+				i = fifo8_get(&timerfifo);//首先读入，设定计时起点
+				io_sti();//设置允许中断
+				putfonts8_asc(buf_back,binfo->scrnx,0,64,COL8_FFFFFF, "10[sec]");//意味着已经过了十秒钟
+				sheet_refresh(sht_back,0,64,56,80); 
+			} else if (fifo8_status(&timerfifo2) != 0) {
+				i = fifo8_get(&timerfifo2); /* 首先读入，设定计时起点 */
+				io_sti();
+				putfonts8_asc(buf_back, binfo->scrnx, 0, 80, COL8_FFFFFF, "3[sec]");
+				sheet_refresh(sht_back, 0, 80, 48, 96);
+			} else if (fifo8_status(&timerfifo3) != 0) {//模拟光标 
+				i = fifo8_get(&timerfifo3);
+				io_sti();
+				if (i != 0) {
+					timer_init(timer3, &timerfifo3, 0); /* 然后设置0 */
+					boxfill8(buf_back, binfo->scrnx, COL8_FFFFFF, 8, 96, 15, 111);
+				} else {
+					timer_init(timer3, &timerfifo3, 1); /* 然后设置1 */
+					boxfill8(buf_back, binfo->scrnx, COL8_008484, 8, 96, 15, 111);
+				}
+				timer_settime(timer3, 50);
+				sheet_refresh(sht_back, 8, 96, 16, 112);
 			}
 		}
 	}
