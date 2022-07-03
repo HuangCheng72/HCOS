@@ -11,8 +11,6 @@ void HariMain(void){
 	struct FIFO8 timerfifo, timerfifo2, timerfifo3;
 	//字符串，各个缓冲区所用的数组 
 	char s[40], keybuf[32], mousebuf[128], timerbuf[8], timerbuf2[8], timerbuf3[8];
-	//三个定时器指针 
-	struct TIMER *timer, *timer2, *timer3;
 	//鼠标的x，y坐标，以及变量i存放从缓冲区中读取的数据 
 	int mx, my, i;
 	unsigned int memtotal;//内存大小
@@ -43,20 +41,14 @@ void HariMain(void){
 	io_out8(PIC0_IMR, 0xf8); //开放PIC1和键盘中断（11111000）权限 （定时器进来要开放新权限） 
 	io_out8(PIC1_IMR, 0xef); //开放鼠标中断(11101111) 权限 
 	
-	//设置定时器缓冲区和定时器属性 
+	//设置缓冲区，插入定时器 
 	fifo8_init(&timerfifo, 8, timerbuf);
-	timer = timer_alloc();
-	timer_init(timer, &timerfifo, 1);
-	timer_settime(timer, 1000);
 	fifo8_init(&timerfifo2, 8, timerbuf2);
-	timer2 = timer_alloc();
-	timer_init(timer2, &timerfifo2, 1);
-	timer_settime(timer2, 300);
 	fifo8_init(&timerfifo3, 8, timerbuf3);
-	timer3 = timer_alloc();
-	timer_init(timer3, &timerfifo3, 1);
-	timer_settime(timer3, 50);
-
+	timer_insert(1000,1,&timerfifo); 
+	timer_insert(300,1,&timerfifo2); 
+	timer_insert(50,1,&timerfifo3);
+	
 	init_keyboard();//初始化键盘  
 	enable_mouse(&mdec);//使鼠标可用，把鼠标结构体指针传进去 
 	memtotal = memtest(0x00400000, 0xbfffffff);
@@ -174,13 +166,14 @@ void HariMain(void){
 				i = fifo8_get(&timerfifo3);
 				io_sti();
 				if (i != 0) {
-					timer_init(timer3, &timerfifo3, 0); /* 然后设置0 */
+					//再次插入定时器，设置为data为0 
+					timer_insert(50,0,&timerfifo3);
 					boxfill8(buf_back, binfo->scrnx, COL8_FFFFFF, 8, 96, 15, 111);
 				} else {
-					timer_init(timer3, &timerfifo3, 1); /* 然后设置1 */
+					//再次插入定时器，设置为data为1
+					timer_insert(50,1,&timerfifo3);
 					boxfill8(buf_back, binfo->scrnx, COL8_008484, 8, 96, 15, 111);
 				}
-				timer_settime(timer3, 50);
 				sheet_refresh(sht_back, 8, 96, 16, 112);
 			}
 		}
