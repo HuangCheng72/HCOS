@@ -22,15 +22,15 @@ void exchange(int i,int j){
     timerctl.timer[j] = temp;
     return;
 }
-//元素上浮，该函数不对外暴露
-void swim(int i){
+//元素上浮，返回最终的位置，该函数不对外暴露
+int swim(int i){
 //    int i = k;
     //如果下标为i的定时器予定时刻小于下标为i/2的定时器予定时刻，就交换到前面去
     while(timerctl.timer[i].timeout < timerctl.timer[i/2].timeout){//因为timer[0]处是哨兵，交换到timer[1]就是堆顶了，不会再上浮
         exchange(i,i/2);
         i /= 2;
     }
-    return;
+    return i;
 }
 //元素下沉，该函数不对外暴露
 void sink(int i){
@@ -54,11 +54,11 @@ void sink(int i){
     }
     return;
 }
-//插入一个定时器，设置各项属性，插入成功返回下标，
-int timer_insert(unsigned int timeout, unsigned char data, struct FIFO8 *fifo){
+//插入一个定时器，设置各项属性，插入成功返回指针
+struct TIMER* timer_insert(struct FIFO32 *fifo , int data, unsigned int timeout){
 	if(timerctl.size == MAX_TIMER){
 	    //如果定时器个数已经达到上限
-        return -1; //插入失败
+        return 0; //插入失败，返回null指针 
 	}
 	//没有到达上限就插入到size+1位置
 	timerctl.size++;
@@ -66,9 +66,8 @@ int timer_insert(unsigned int timeout, unsigned char data, struct FIFO8 *fifo){
 	timerctl.timer[timerctl.size].fifo = fifo;
 	timerctl.timer[timerctl.size].timeout = timeout;
 	//上浮调整堆
-	swim(timerctl.size);
-	//返回下标
-	return timerctl.size;
+	//返回指针
+	return &(timerctl.timer[swim(timerctl.size)]);
 }
 //释放堆顶的定时器
 void timer_free(){
@@ -92,9 +91,10 @@ void inthandler20(int *esp){
 	//判断有没有定时器，如果有的话，堆顶定时器是否已经超时 
 	while(timerctl.size > 0 && timerctl.timer[1].timeout <= timerctl.count){
 	    //输出到缓冲区
-        fifo8_put(timerctl.timer[1].fifo, timerctl.timer[1].data);
+        fifo32_put(timerctl.timer[1].fifo, timerctl.timer[1].data);
         //释放堆顶定时器
         timer_free();
 	}
 	return;
 }
+

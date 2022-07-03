@@ -4,8 +4,8 @@
 #define MAX_TIMER		500
 struct TIMER {
 	unsigned int timeout;
-	struct FIFO8 *fifo;
-	unsigned char data;
+	struct FIFO32 *fifo;
+	int data;
 };
 struct TIMERCTL {
     //count为计时器，size是现有计时器数目
@@ -16,6 +16,6 @@ struct TIMERCTL {
 };
 extern struct TIMERCTL timerctl;
 void init_pit(void);//初始化PIT
-int timer_insert(unsigned int timeout, unsigned char data, struct FIFO8 *fifo);//插入一个指定属性的定时器
+struct TIMER* timer_insert(struct FIFO32 *fifo , int data, unsigned int timeout);//插入一个指定属性的定时器
 void timer_free();//释放已经到达的定时器
 void inthandler20(int *esp);//处理函数 

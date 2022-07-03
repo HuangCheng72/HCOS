@@ -1,18 +1,22 @@
 #include "bootpack.h"
 
-extern struct FIFO8 keyfifo, mousefifo;//两个缓冲区 
-
+extern struct FIFO32 keyfifo, mousefifo;//两个缓冲区
+//绘制窗口
 void make_window8(unsigned char *buf, int xsize, int ysize, char *title);
+//整合了重新上色部分区域，打印字符串，刷新图层三个函数
+void putfonts8_asc_sht(struct SHEET *sht, int x, int y, int c, int b, char *s, int l);
 
 void HariMain(void){
 	//染色区域指针 ，直接指针指向我们指定显示信息存放的地址 
 	struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
-	//定时器缓冲区
-	struct FIFO8 timerfifo, timerfifo2, timerfifo3;
+	//FIFO缓冲区公用内存空间
+	int fifobuf[128];
+	//缓冲区
+	struct FIFO32 fifo;
 	//字符串，各个缓冲区所用的数组 
-	char s[40], keybuf[32], mousebuf[128], timerbuf[8], timerbuf2[8], timerbuf3[8];
+	char s[40];
 	//鼠标的x，y坐标，以及变量i存放从缓冲区中读取的数据 
-	int mx, my, i;
+	int mx, my, i, count = 0;
 	unsigned int memtotal;//内存大小
 	//鼠标信息结构体，以后鼠标信息就靠它来描述 
 	struct MOUSE_DEC mdec;
@@ -33,28 +37,24 @@ void HariMain(void){
 	//执行STI指令之后，中断许可标志位变成1，CPU可以接受来自外部设备的中断，它是CLI的逆指令 
 	io_sti();
 	//初始化缓冲区 
-	fifo8_init(&keyfifo, 32, keybuf);
-	fifo8_init(&mousefifo, 128, mousebuf);
+	fifo32_init(&fifo, 128, fifobuf);
 	//初始化定时器 
 	init_pit(); 
 	//修改PIC的IMR，可以接受来自键盘和鼠标的中断 
 	io_out8(PIC0_IMR, 0xf8); //开放PIC1和键盘中断（11111000）权限 （定时器进来要开放新权限） 
-	io_out8(PIC1_IMR, 0xef); //开放鼠标中断(11101111) 权限 
+	io_out8(PIC1_IMR, 0xef); //开放鼠标中断(11101111) 权限
 	
-	//设置缓冲区，插入定时器 
-	fifo8_init(&timerfifo, 8, timerbuf);
-	fifo8_init(&timerfifo2, 8, timerbuf2);
-	fifo8_init(&timerfifo3, 8, timerbuf3);
-	timer_insert(1000,1,&timerfifo); 
-	timer_insert(300,1,&timerfifo2); 
-	timer_insert(50,1,&timerfifo3);
-	
-	init_keyboard();//初始化键盘  
-	enable_mouse(&mdec);//使鼠标可用，把鼠标结构体指针传进去 
+	init_keyboard(&fifo, 256);//初始化键盘
+	enable_mouse(&fifo,512,&mdec);//使鼠标可用，把鼠标结构体指针传进去
 	memtotal = memtest(0x00400000, 0xbfffffff);
 	memman_init(memman);
 	memman_free(memman, 0x00001000, 0x0009e000); /* 0x00001000 - 0x0009efff */
 	memman_free(memman, 0x00400000, memtotal - 0x00400000);
+
+    //插入定时器
+	timer_insert(&fifo,10,1000);
+	timer_insert(&fifo,3,300);
+	timer_insert(&fifo,1,50);
 	
 	//初始化调色板 
 	init_palette();
@@ -83,33 +83,24 @@ void HariMain(void){
 	sheet_updown(sht_mouse, 2);
 	//打印坐标到字符串 
 	sprintf(s, "(%3d, %3d)", mx, my);
-	putfonts8_asc(buf_back, binfo->scrnx, 0, 0, COL8_FFFFFF, s);
+	putfonts8_asc_sht(sht_back, 0, 0, COL8_FFFFFF, COL8_008484, s, 10);
 	//打印内存信息 
 	sprintf(s, "memory %dMB   free : %dKB", memtotal / (1024 * 1024), memman_total(memman) / 1024);
-	putfonts8_asc(buf_back, binfo->scrnx, 0, 32, COL8_FFFFFF, s);
-	sheet_refresh(sht_back, 0, 0, binfo->scrnx, 48);
+	putfonts8_asc_sht(sht_back, 0, 32, COL8_FFFFFF, COL8_008484, s, 40);
 
 	for (;;) {
-		sprintf(s, "%010d", timerctl.count);//输出计次器计时数据 
-		boxfill8(buf_win, 160, COL8_C6C6C6, 40, 28, 119, 43);
-		putfonts8_asc(buf_win, 160, 40, 28, COL8_000000, s);
-		sheet_refresh(sht_win, 40, 28, 120, 44);
-
+	    count++;
 		io_cli(); //禁止中断，打印的时候不能中断 
-		if (fifo8_status(&keyfifo) + fifo8_status(&mousefifo) + fifo8_status(&timerfifo) + fifo8_status(&timerfifo2) + fifo8_status(&timerfifo3) == 0) {
+		if (fifo32_status(&fifo) == 0) {
 			io_sti();
 		} else {
-			if (fifo8_status(&keyfifo) != 0) {
-				i = fifo8_get(&keyfifo);
-				io_sti();
-				sprintf(s, "%02X", i);
-				boxfill8(buf_back, binfo->scrnx, COL8_008484,  0, 16, 15, 31);
-				putfonts8_asc(buf_back, binfo->scrnx, 0, 16, COL8_FFFFFF, s);
-				sheet_refresh(sht_back, 0, 16, 16, 32);
-			} else if (fifo8_status(&mousefifo) != 0) {
-				i = fifo8_get(&mousefifo);
-				io_sti();
-				if (mouse_decode(&mdec, i) != 0) {//解码成功，没有中途而废的情况 
+		    i = fifo32_get(&fifo);
+		    io_sti();
+			if (256 <= i && i <= 511) {//键盘数据
+				sprintf(s, "%02X", i - 256);
+                putfonts8_asc_sht(sht_back,0,16,COL8_FFFFFF,COL8_008484,s,2);
+			} else if (512 <= i && i <= 767) {//鼠标数据
+				if (mouse_decode(&mdec, i - 512) != 0) {//解码成功，没有中途而废的情况
 					//成功解读出三个字节的情况，那当然要输出 
 					sprintf(s, "[lcr %4d %4d]", mdec.x, mdec.y);
 					if ((mdec.btn & 0x01) != 0) {
@@ -124,9 +115,7 @@ void HariMain(void){
 						//如果鼠标中键被按下 
 						s[2] = 'C';
 					}
-					boxfill8(buf_back, binfo->scrnx, COL8_008484, 32, 16, 32 + 15 * 8 - 1, 31);
-					putfonts8_asc(buf_back, binfo->scrnx, 32, 16, COL8_FFFFFF, s);
-					sheet_refresh(sht_back, 32, 16, 32 + 15 * 8, 32);
+					putfonts8_asc_sht(sht_back, 32, 16, COL8_FFFFFF, COL8_008484, s, 15);
 					//开始移动鼠标指针
 					//计算鼠标指针位置
 					//基位置+偏移量
@@ -147,34 +136,26 @@ void HariMain(void){
 						my = binfo->scrny - 1;
 					}
 					sprintf(s, "(%3d, %3d)", mx, my);
-					boxfill8(buf_back, binfo->scrnx, COL8_008484, 0, 0, 79, 15); //打印之前先把原来的坐标盖住
-					putfonts8_asc(buf_back, binfo->scrnx, 0, 0, COL8_FFFFFF, s); //打印新的字符串到屏幕上 
-					sheet_refresh(sht_back, 0, 0, 80, 16);
+					putfonts8_asc_sht(sht_back, 0, 0, COL8_FFFFFF, COL8_008484, s, 10);
 					sheet_slide(sht_mouse, mx, my);
 				}
-			}else if(fifo8_status(&timerfifo) != 0) {
-				i = fifo8_get(&timerfifo);//首先读入，设定计时起点
-				io_sti();//设置允许中断
-				putfonts8_asc(buf_back,binfo->scrnx,0,64,COL8_FFFFFF, "10[sec]");//意味着已经过了十秒钟
-				sheet_refresh(sht_back,0,64,56,80); 
-			} else if (fifo8_status(&timerfifo2) != 0) {
-				i = fifo8_get(&timerfifo2); /* 首先读入，设定计时起点 */
-				io_sti();
-				putfonts8_asc(buf_back, binfo->scrnx, 0, 80, COL8_FFFFFF, "3[sec]");
-				sheet_refresh(sht_back, 0, 80, 48, 96);
-			} else if (fifo8_status(&timerfifo3) != 0) {//模拟光标 
-				i = fifo8_get(&timerfifo3);
-				io_sti();
-				if (i != 0) {
-					//再次插入定时器，设置为data为0 
-					timer_insert(50,0,&timerfifo3);
-					boxfill8(buf_back, binfo->scrnx, COL8_FFFFFF, 8, 96, 15, 111);
-				} else {
-					//再次插入定时器，设置为data为1
-					timer_insert(50,1,&timerfifo3);
-					boxfill8(buf_back, binfo->scrnx, COL8_008484, 8, 96, 15, 111);
-				}
+			}else if(i == 10) {//10秒定时器
+				putfonts8_asc_sht(sht_back, 0, 64, COL8_FFFFFF, COL8_008484, "10[sec]", 7);
+				sprintf(s, "%010d", timerctl.count);//输出计次器计时数据 
+				putfonts8_asc_sht(sht_win, 40, 28, COL8_000000, COL8_C6C6C6, s, 10);//打印到窗口上 
+			} else if (i == 3) {//3秒定时器
+				putfonts8_asc_sht(sht_back, 0, 80, COL8_FFFFFF, COL8_008484, "3[sec]", 6);
+				count = 0;//3秒后才开始计时 
+			} else if ( i == 1 ) {//光标用定时器
+			    //再次插入定时器，设置为data为0
+			    timer_insert(&fifo,0,50);
+			    boxfill8(buf_back, binfo->scrnx, COL8_FFFFFF, 8, 96, 15, 111);
 				sheet_refresh(sht_back, 8, 96, 16, 112);
+			} else if ( i == 0 ) {//光标用定时器
+                //再次插入定时器，设置为data为1
+                timer_insert(&fifo,1,50);
+                boxfill8(buf_back, binfo->scrnx, COL8_008484, 8, 96, 15, 111);
+                sheet_refresh(sht_back, 8, 96, 16, 112);
 			}
 		}
 	}
@@ -228,3 +209,11 @@ void make_window8(unsigned char *buf, int xsize, int ysize, char *title){
 	return;
 }
 
+//整合了以颜色覆盖部分区域，打印字符串，刷新图层三个函数
+//参数分别是，图层，打印的x，y位置，c是字符串颜色，b是背景颜色，s是字符串，l是字符串长度
+void putfonts8_asc_sht(struct SHEET *sht, int x, int y, int c, int b, char *s, int l){
+	boxfill8(sht->buf, sht->bxsize, b, x, y, x + l * 8 - 1, y + 15);
+	putfonts8_asc(sht->buf, sht->bxsize, x, y, c, s);
+	sheet_refresh(sht, x, y, x + l * 8, y + 16);
+	return;
+}
