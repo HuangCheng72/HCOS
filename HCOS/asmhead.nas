@@ -14,6 +14,7 @@ SCRNY   EQU     0x0ff6          ; 分辨率的y
 VRAM    EQU     0x0ff8          ; 图像缓冲区的开始地址
 
 		ORG		0xc200			; 这个程序将被放到内存中的0xc200位置，怎么算出来这个位置就看书P55
+; 画面参数设定
         MOV     AL,0x13         ; VGA显卡，320×200×8位色彩
         MOV     AH,0x00
         INT     0x10
