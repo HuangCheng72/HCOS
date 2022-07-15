@@ -17,8 +17,10 @@
 		GLOBAL	_io_load_eflags, _io_store_eflags
         GLOBAL	_load_gdtr, _load_idtr
         GLOBAL	_load_cr0, _store_cr0
+        GLOBAL	_load_tr
         GLOBAL	_asm_inthandler20, _asm_inthandler21, _asm_inthandler27, _asm_inthandler2c
         GLOBAL	_memtest_sub
+        GLOBAL  _farjmp
         EXTERN	_inthandler20, _inthandler21, _inthandler27, _inthandler2c ; 这四个是引入的中断处理
 
 
@@ -108,6 +110,10 @@ _load_cr0:		; int load_cr0(void);
 _store_cr0:		; void store_cr0(int cr0);
 		MOV		EAX,[ESP+4]
 		MOV		CR0,EAX
+		RET
+
+_load_tr:		; void load_tr(int tr);
+		LTR		[ESP+4]			; tr
 		RET
 
 _asm_inthandler20:
@@ -205,4 +211,8 @@ mts_fin:
 		POP		EBX
 		POP		ESI
 		POP		EDI
+		RET
+
+_farjmp:		; void farjmp(int eip, int cs);
+		JMP		FAR	[ESP+4]				; eip, cs
 		RET

@@ -7,5 +7,6 @@
 #include "memory.h"
 #include "sheet.h"
 #include "timer.h" 
+#include "mtask.h" 
 //naskfunc.nas中给出的函数
 #include "naskfunction.h"

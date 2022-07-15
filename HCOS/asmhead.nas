@@ -1,5 +1,17 @@
-; hcos
+; hcos boot asmhead
 ; TAB=4
+
+; 切换到保护模式
+
+[INSTRSET "i486p"]				; “需要使用486指令”的意思，是为了能够使用386以后的LGDT，EAX，CR0等关键字
+
+VBEMODE	EQU		0x105			; 1024 x  768 x 8bit
+; （画面模式代号一览）
+;	0x100 :  640 x  400 x 8bit
+;	0x101 :  640 x  480 x 8bit
+;	0x103 :  800 x  600 x 8bit
+;	0x105 : 1024 x  768 x 8bit
+;	0x107 : 1280 x 1024 x 8bit
 
 BOTPAK	EQU		0x00280000		; bootpack的存放位置
 DSKCAC	EQU		0x00100000		; ディスクキャッシュの場所
@@ -14,7 +26,57 @@ SCRNY   EQU     0x0ff6          ; 分辨率的y
 VRAM    EQU     0x0ff8          ; 图像缓冲区的开始地址
 
 		ORG		0xc200			; 这个程序将被放到内存中的0xc200位置，怎么算出来这个位置就看书P55
+        
+; 确定VBE是否存在，如果不存在就用320模式
+
+		MOV		AX,0x9000
+		MOV		ES,AX
+		MOV		DI,0
+		MOV		AX,0x4f00
+		INT		0x10
+		CMP		AX,0x004f
+		JNE		scrn320
+
+; 决定使用何种模式
+
+		MOV		AX,[ES:DI+4]
+		CMP		AX,0x0200
+		JB		scrn320			; if (AX < 0x0200) goto scrn320
+
+; 获取画面信息
+
+		MOV		CX,VBEMODE
+		MOV		AX,0x4f01
+		INT		0x10
+		CMP		AX,0x004f
+		JNE		scrn320
+
+; 确定画面信息
+
+		CMP		BYTE [ES:DI+0x19],8
+		JNE		scrn320
+		CMP		BYTE [ES:DI+0x1b],4
+		JNE		scrn320
+		MOV		AX,[ES:DI+0x00]
+		AND		AX,0x0080
+		JZ		scrn320			; モード属性のbit7が0だったのであきらめる
+
+; 设定画面模式
+
+		MOV		BX,VBEMODE+0x4000
+		MOV		AX,0x4f02
+		INT		0x10
+		MOV		BYTE [VMODE],8	; 记录画面模式，参考C语言
+		MOV		AX,[ES:DI+0x12]
+		MOV		[SCRNX],AX
+		MOV		AX,[ES:DI+0x14]
+		MOV		[SCRNY],AX
+		MOV		EAX,[ES:DI+0x28]
+		MOV		[VRAM],EAX
+		JMP		keystatus
+
 ; 画面参数设定
+scrn320:
         MOV     AL,0x13         ; VGA显卡，320×200×8位色彩
         MOV     AH,0x00
         INT     0x10
@@ -24,6 +86,7 @@ VRAM    EQU     0x0ff8          ; 图像缓冲区的开始地址
         MOV     DWORD [VRAM],0x000a0000
         
 ; 用BIOS取得键盘上各种LED指示灯的状态
+keystatus:
         MOV     AH,0x02
         INT     0x16            ;键盘BIOS
         MOV     [LEDS],AL
@@ -63,7 +126,7 @@ VRAM    EQU     0x0ff8          ; 图像缓冲区的开始地址
 
 ; 切换到保护模式
 
-[INSTRSET "i486p"]				; “需要使用486指令”的意思，是为了能够使用386以后的LGDT，EAX，CR0等关键字
+; [INSTRSET "i486p"]				; “需要使用486指令”的意思，是为了能够使用386以后的LGDT，EAX，CR0等关键字
 
 		LGDT	[GDTR0]			; 设定临时GDT（因为以后要重新设置）
 		MOV		EAX,CR0			; 将CRO（control register 0）寄存器的值带入EAX，这个寄存器只有操作系统才能使用

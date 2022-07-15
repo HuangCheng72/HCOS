@@ -20,6 +20,7 @@ struct GATE_DESCRIPTOR {
 	char dw_count, access_right;
 	short offset_high;
 }; 
+
 void init_gdtidt(void); //初始化GDT和IDT 
 void set_segmdesc(struct SEGMENT_DESCRIPTOR *sd, unsigned int limit, int base, int ar); //设置段信息 
 void set_gatedesc(struct GATE_DESCRIPTOR *gd, int offset, int selector, int ar); //设置中断信息 

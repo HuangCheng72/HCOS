@@ -8,7 +8,7 @@
 //尝试用双向链表思想修改内存管理 
 struct FREEINFO {	/* 可用信息 */
 	unsigned int addr, size;
-	struct rb_node rb_node_addr;    // 地址红黑树节点
+	struct rb_node rb_node_addr;    // 地址红黑树结点 
 	struct FREEINFO* pre;
 	struct FREEINFO* next; //可用信息结点的pre指针和next指针 
 };

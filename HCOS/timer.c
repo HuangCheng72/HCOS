@@ -86,14 +86,26 @@ void timer_free(){
 }
 
 void inthandler20(int *esp){
-	io_out8(PIC0_OCW2, 0x60);	/* 把IRQ-00信号接受结束的信息通知给PIC */
+	char ts = 0;//切换任务标识符 
+	io_out8(PIC0_OCW2, 0x60);	//把IRQ-00信号接受结束的信息通知给PIC
 	timerctl.count++;//计时增加
 	//判断有没有定时器，如果有的话，堆顶定时器是否已经超时 
 	while(timerctl.size > 0 && timerctl.timer[1].timeout <= timerctl.count){
-	    //输出到缓冲区
-        fifo32_put(timerctl.timer[1].fifo, timerctl.timer[1].data);
-        //释放堆顶定时器
+		//如果有定时器判断一下堆顶是不是多任务的定时器
+		if(timerctl.timer[1].fifo == 0){
+			//如果是，就修改标识符
+			ts = 1;
+		}else{
+			//如果不是
+			//输出到缓冲区
+        	fifo32_put(timerctl.timer[1].fifo, timerctl.timer[1].data);
+		}
+		//释放堆顶定时器
         timer_free();
+	}
+	if(ts != 0){
+		//标识符为真，切换任务 
+		mt_taskswitch();
 	}
 	return;
 }
