@@ -14,8 +14,8 @@ VBEMODE	EQU		0x105			; 1024 x  768 x 8bit
 ;	0x107 : 1280 x 1024 x 8bit
 
 BOTPAK	EQU		0x00280000		; bootpack的存放位置
-DSKCAC	EQU		0x00100000		; ディスクキャッシュの場所
-DSKCAC0	EQU		0x00008000		; ディスクキャッシュの場所（リアルモード）
+DSKCAC	EQU		0x00100000		; DSKCAC存放位置
+DSKCAC0	EQU		0x00008000		; DSKCAC存放位置（320*200显示模式）
 
 ; BOOT_INFO，这部分是我们之前所作的部分
 CYLS    EQU     0X0ff0          ; 设定启动区

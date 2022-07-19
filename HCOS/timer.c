@@ -105,7 +105,7 @@ void inthandler20(int *esp){
 	}
 	if(ts != 0){
 		//标识符为真，切换任务 
-		mt_taskswitch();
+		task_switch();
 	}
 	return;
 }
