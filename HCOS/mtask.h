@@ -13,6 +13,7 @@ struct TSS32 {
 struct TASK {
 	int sel, flags; //SEL是用来存放GDT的编号
 	int level, priority; //在第几个级别，优先级
+	struct FIFO32 fifo;//任务所使用的缓冲区 
 	struct TSS32 tss; //TSS
 };
 struct TASKLEVEL {
@@ -27,6 +28,7 @@ struct TASKCTL {
 	struct TASK tasks0[MAX_TASKS];
 };
 extern struct TIMER *task_timer;
+struct TASK *task_now(void);
 struct TASK *task_init(struct MEMMAN *memman);
 struct TASK *task_alloc(void);
 void task_run(struct TASK *task, int level, int priority);

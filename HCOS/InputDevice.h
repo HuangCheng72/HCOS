@@ -7,6 +7,8 @@
 #define KEYCMD_SENDTO_MOUSE		0xd4
 #define MOUSECMD_ENABLE			0xf4
 
+#define KEYCMD_LED		0xed
+
 //鼠标信息结构体 
 struct MOUSE_DEC {
 	unsigned char buf[3], phase;
