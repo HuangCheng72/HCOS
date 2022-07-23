@@ -7,8 +7,10 @@ void putfonts8_asc_sht(struct SHEET *sht, int x, int y, int c, int b, char *s, i
 void make_textbox8(struct SHEET *sht, int x0, int y0, int sx, int sy, int c);
 //绘制窗口部分工作 
 void make_wtitle8(unsigned char *buf, int xsize, char *title, char act);
-//控制台图层任务 
-void console_task(struct SHEET *sheet);
+//控制台任务 
+void console_task(struct SHEET *sheet, unsigned int memtotal);
+//控制台新开一行 
+int cons_newline(int cursor_y, struct SHEET *sheet);
 
 void HariMain(void){
 	//染色区域指针 ，直接指针指向我们指定显示信息存放的地址 
@@ -75,12 +77,8 @@ void HariMain(void){
 	enable_mouse(&fifo,512,&mdec);//使鼠标可用，把鼠标结构体指针传进去
 	
 	fifo32_init(&keycmd, 32, keycmd_buf, 0);
-    
-    //插入定时器
-	timer_insert(&fifo,10,1000);
-	timer_insert(&fifo,3,300);
-	timer_insert(&fifo,1,50);
-    
+	
+    //初始化内存管理 
 	memtotal = memtest(0x00400000, 0xbfffffff);
 	memman_init(memman);
 	memman_free(memman, 0x00001000, 0x0009e000); /* 0x00001000 - 0x0009efff */
@@ -107,7 +105,7 @@ void HariMain(void){
 	make_window8(buf_cons, 256, 165, "console", 0);
 	make_textbox8(sht_cons, 8, 28, 240, 128, COL8_000000);
 	task_cons = task_alloc();
-	task_cons->tss.esp = memman_alloc_4k(memman, 64 * 1024) + 64 * 1024 - 8;
+	task_cons->tss.esp = memman_alloc_4k(memman, 64 * 1024) + 64 * 1024 - 12;
 	task_cons->tss.eip = (int) &console_task;
 	task_cons->tss.es = 1 * 8;
 	task_cons->tss.cs = 2 * 8;
@@ -116,6 +114,7 @@ void HariMain(void){
 	task_cons->tss.fs = 1 * 8;
 	task_cons->tss.gs = 1 * 8;
 	*((int *) (task_cons->tss.esp + 4)) = (int) sht_cons;
+	*((int *) (task_cons->tss.esp + 8)) = memtotal;
 	task_run(task_cons, 2, 2); // level=2, priority=2
 	 
 	//任务窗口A图层和绘制 
@@ -145,16 +144,11 @@ void HariMain(void){
 	sheet_updown(sht_cons,  1);
 	sheet_updown(sht_win,   2);
 	sheet_updown(sht_mouse, 3);
-	//打印坐标到字符串 
-	sprintf(s, "(%3d, %3d)", mx, my);
-	putfonts8_asc_sht(sht_back, 0, 0, COL8_FFFFFF, COL8_008484, s, 10);
-	//打印内存信息 
-	sprintf(s, "memory %dMB   free : %dKB", memtotal / (1024 * 1024), memman_total(memman) / 1024);
-	putfonts8_asc_sht(sht_back, 0, 32, COL8_FFFFFF, COL8_008484, s, 40);
 	
 	//为了避免和键盘当前状态冲突，在一开始先进行设置 
 	fifo32_put(&keycmd, KEYCMD_LED);
 	fifo32_put(&keycmd, key_leds);
+	
 	
 	for (;;) {
 		if (fifo32_status(&keycmd) > 0 && keycmd_wait < 0) {
@@ -168,12 +162,10 @@ void HariMain(void){
 			task_sleep(task_a);
 			io_sti();
 		} else {
-		    i = fifo32_get(&fifo);
-		    io_sti();
+			i = fifo32_get(&fifo);
+			io_sti();
 			if (256 <= i && i <= 511) { //键盘数据 
-				sprintf(s, "%02X", i - 256);
-				putfonts8_asc_sht(sht_back, 0, 16, COL8_FFFFFF, COL8_008484, s, 2);
-				if (i < 0x80 + 256) { //将案件编码转化为字符编码 
+				if (i < 0x80 + 256) { //将按键编码转化为字符编码 
 					if (key_shift == 0) {
 						s[0] = keytable0[i - 256];
 					} else {
@@ -211,15 +203,25 @@ void HariMain(void){
 						fifo32_put(&task_cons->fifo, 8 + 256);
 					}
 				}
+				if (i == 256 + 0x1c) {	//回车键 
+					if (key_to != 0) {	//发送到命令行窗口 
+						fifo32_put(&task_cons->fifo, 10 + 256);
+					}
+				}
 				if (i == 256 + 0x0f) {	//tab键 
 					if (key_to == 0) {
 						key_to = 1;
 						make_wtitle8(buf_win,  sht_win->bxsize,  "task_a",  0);
 						make_wtitle8(buf_cons, sht_cons->bxsize, "console", 1);
+						cursor_c = -1; //不显示光标 
+						boxfill8(sht_win->buf, sht_win->bxsize, COL8_FFFFFF, cursor_x, 28, cursor_x + 7, 43);
+						fifo32_put(&task_cons->fifo, 2); //命令行窗口光标打开 
 					} else {
 						key_to = 0;
 						make_wtitle8(buf_win,  sht_win->bxsize,  "task_a",  1);
 						make_wtitle8(buf_cons, sht_cons->bxsize, "console", 0);
+						cursor_c = COL8_000000; //显示光标 
+						fifo32_put(&task_cons->fifo, 3); //命令行窗口光标关闭 
 					}
 					sheet_refresh(sht_win,  0, 0, sht_win->bxsize,  21);
 					sheet_refresh(sht_cons, 0, 0, sht_cons->bxsize, 21);
@@ -259,25 +261,12 @@ void HariMain(void){
 					io_out8(PORT_KEYDAT, keycmd_wait);
 				}
 				//光标重新显示
-				boxfill8(sht_win->buf, sht_win->bxsize, cursor_c, cursor_x, 28, cursor_x + 7, 43);
+				if (cursor_c >= 0) {
+					boxfill8(sht_win->buf, sht_win->bxsize, cursor_c, cursor_x, 28, cursor_x + 7, 43);
+				}
 				sheet_refresh(sht_win, cursor_x, 28, cursor_x + 8, 44);
-			} else if (512 <= i && i <= 767) {//鼠标数据
+			} else if (512 <= i && i <= 767) { //鼠标数据
 				if (mouse_decode(&mdec, i - 512) != 0) {//解码成功，没有中途而废的情况
-					//成功解读出三个字节的情况，那当然要输出 
-					sprintf(s, "[lcr %4d %4d]", mdec.x, mdec.y);
-					if ((mdec.btn & 0x01) != 0) {
-						//如果鼠标左键被按下 
-						s[1] = 'L';
-					}
-					if ((mdec.btn & 0x02) != 0) {
-						//如果鼠标右键被按下 
-						s[3] = 'R';
-					}
-					if ((mdec.btn & 0x04) != 0) {
-						//如果鼠标中键被按下 
-						s[2] = 'C';
-					}
-					putfonts8_asc_sht(sht_back, 32, 16, COL8_FFFFFF, COL8_008484, s, 15);
 					//开始移动鼠标指针
 					//计算鼠标指针位置
 					//基位置+偏移量
@@ -297,26 +286,30 @@ void HariMain(void){
 					if (my > binfo->scrny - 1) {
 						my = binfo->scrny - 1;
 					}
-					sprintf(s, "(%3d, %3d)", mx, my);
-					putfonts8_asc_sht(sht_back, 0, 0, COL8_FFFFFF, COL8_008484, s, 10);
 					sheet_slide(sht_mouse, mx, my);
 					if ((mdec.btn & 0x01) != 0) {
 						//按下鼠标左键，移动sht_win 
 						sheet_slide(sht_win, mx - 80, my - 8);
 					}
 				}
-			} else if (i <= 1) { //光标用定时器 
+			} else if (i <= 1) { //光标用数据
 				if (i != 0) {
-					timer_insert(&fifo,0,50);//插入新的定时器 
-					cursor_c = COL8_000000;
+                    timer_insert(&fifo,0,50); //插入新的定时器 
+					if (cursor_c >= 0) {
+						cursor_c = COL8_000000;
+					}
 				} else {
-					timer_insert(&fifo,1,50);//插入新的定时器 
-					cursor_c = COL8_FFFFFF;
+					timer_insert(&fifo,1,50); //插入新的定时器 
+					if (cursor_c >= 0) {
+						cursor_c = COL8_FFFFFF;
+					}
 				}
-				//覆盖光标位置 
-				boxfill8(sht_win->buf, sht_win->bxsize, cursor_c, cursor_x, 28, cursor_x + 7, 43);
-				//刷新图层，才有一闪一闪的效果 
-				sheet_refresh(sht_win, cursor_x, 28, cursor_x + 8, 44);
+				if (cursor_c >= 0) {
+					//覆盖光标位置 
+					boxfill8(sht_win->buf, sht_win->bxsize, cursor_c, cursor_x, 28, cursor_x + 7, 43);
+					//刷新图层，才有一闪一闪的效果 
+					sheet_refresh(sht_win, cursor_x, 28, cursor_x + 8, 44);
+				}
 			}
 		}
 	}
@@ -402,10 +395,13 @@ void make_textbox8(struct SHEET *sht, int x0, int y0, int sx, int sy, int c){
 	boxfill8(sht->buf, sht->bxsize, c,           x0 - 1, y0 - 1, x1 + 0, y1 + 0);
 	return;
 }
-void console_task(struct SHEET *sheet){
+void console_task(struct SHEET *sheet, unsigned int memtotal){
 	struct TASK *task = task_now();
-	int i, fifobuf[128], cursor_x = 16, cursor_c = COL8_000000;
-	char s[2];
+	int i, fifobuf[128], cursor_x = 16, cursor_y = 28, cursor_c = -1;
+	char s[30], cmdline[30];
+	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
+	int x, y;
+	struct FILEINFO *finfo = (struct FILEINFO *) (ADR_DISKIMG + 0x002600);
 
 	fifo32_init(&task->fifo, 128, fifobuf, task);
 	timer_insert(&task->fifo,1,50);
@@ -424,37 +420,125 @@ void console_task(struct SHEET *sheet){
 			if (i <= 1) { //数据为光标闪烁数据 
 				if (i != 0) {
 					timer_insert(&task->fifo,0,50);
-					cursor_c = COL8_FFFFFF;
+					if (cursor_c >= 0) {
+						cursor_c = COL8_FFFFFF;
+					}
 				} else {
 					timer_insert(&task->fifo,1,50);
-					cursor_c = COL8_000000;
+					if (cursor_c >= 0) {
+						cursor_c = COL8_000000;
+					}
 				}
-
+			}
+			if (i == 2) {	//光标打开 
+				cursor_c = COL8_FFFFFF;
+			}
+			if (i == 3) {	//光标关闭 
+				boxfill8(sheet->buf, sheet->bxsize, COL8_000000, cursor_x, cursor_y, cursor_x + 7, cursor_y + 15);
+				cursor_c = -1;
 			}
 			if (256 <= i && i <= 511) { //键盘数据
 				if (i == 8 + 256) {
 					//退格键 
 					if (cursor_x > 16) {
 						//用空格键把光标消去，后移一次光标 
-						putfonts8_asc_sht(sheet, cursor_x, 28, COL8_FFFFFF, COL8_000000, " ", 1);
+						putfonts8_asc_sht(sheet, cursor_x, cursor_y, COL8_FFFFFF, COL8_000000, " ", 1);
 						cursor_x -= 8;
 					}
+				} else if (i == 10 + 256) {
+					//回车键 
+					//用空格将光标删除 
+					putfonts8_asc_sht(sheet, cursor_x, cursor_y, COL8_FFFFFF, COL8_000000, " ", 1);
+					cmdline[cursor_x / 8 - 2] = 0;
+					cursor_y = cons_newline(cursor_y, sheet);
+					//执行命令 
+					if (strcmp(cmdline, "mem") == 0) {
+						//mem命令打印内存使用情况 
+						sprintf(s, "total   %dMB", memtotal / (1024 * 1024));
+						putfonts8_asc_sht(sheet, 8, cursor_y, COL8_FFFFFF, COL8_000000, s, 30);
+						cursor_y = cons_newline(cursor_y, sheet);
+						sprintf(s, "free %dKB", memman_total(memman) / 1024);
+						putfonts8_asc_sht(sheet, 8, cursor_y, COL8_FFFFFF, COL8_000000, s, 30);
+						cursor_y = cons_newline(cursor_y, sheet);
+						cursor_y = cons_newline(cursor_y, sheet);
+					} else if (strcmp(cmdline, "cls") == 0) {
+						//cls命令清空控制台 
+						for (y = 28; y < 28 + 128; y++) {
+							for (x = 8; x < 8 + 240; x++) {
+								sheet->buf[x + y * sheet->bxsize] = COL8_000000;
+							}
+						}
+						sheet_refresh(sheet, 8, 28, 8 + 240, 28 + 128);
+						cursor_y = 28;
+					} else if (strcmp(cmdline, "dir") == 0) {
+						//dir命令输出文件信息 
+						for (x = 0; x < 224; x++) {
+							if (finfo[x].name[0] == 0x00) {
+								break;
+							}
+							if (finfo[x].name[0] != 0xe5) {
+								if ((finfo[x].type & 0x18) == 0) {
+									sprintf(s, "filename.ext   %7d", finfo[x].size);
+									for (y = 0; y < 8; y++) {
+										s[y] = finfo[x].name[y];
+									}
+									s[ 9] = finfo[x].ext[0];
+									s[10] = finfo[x].ext[1];
+									s[11] = finfo[x].ext[2];
+									putfonts8_asc_sht(sheet, 8, cursor_y, COL8_FFFFFF, COL8_000000, s, 30);
+									cursor_y = cons_newline(cursor_y, sheet);
+								}
+							}
+						}
+						cursor_y = cons_newline(cursor_y, sheet);
+					} else if (cmdline[0] != 0) {
+						//不是命令也不是空行，无法判断 
+						putfonts8_asc_sht(sheet, 8, cursor_y, COL8_FFFFFF, COL8_000000, "Bad command.", 12);
+						cursor_y = cons_newline(cursor_y, sheet);
+						cursor_y = cons_newline(cursor_y, sheet);
+					}
+					//显示提示符 
+					putfonts8_asc_sht(sheet, 8, cursor_y, COL8_FFFFFF, COL8_000000, ">", 1);
+					cursor_x = 16;
 				} else {
 					//一般字符
 					if (cursor_x < 240) {
 						//显示一个字符就移动一次光标 
 						s[0] = i - 256;
 						s[1] = 0;
-						putfonts8_asc_sht(sheet, cursor_x, 28, COL8_FFFFFF, COL8_000000, s, 1);
+						cmdline[cursor_x / 8 - 2] = i - 256;
+						putfonts8_asc_sht(sheet, cursor_x, cursor_y, COL8_FFFFFF, COL8_000000, s, 1);
 						cursor_x += 8;
 					}
 				}
 			}
-			//光标再显示 
-			boxfill8(sheet->buf, sheet->bxsize, cursor_c, cursor_x, 28, cursor_x + 7, 43);
-			sheet_refresh(sheet, cursor_x, 28, cursor_x + 8, 44);
+			//光标再显示
+			if (cursor_c >= 0) {
+				boxfill8(sheet->buf, sheet->bxsize, cursor_c, cursor_x, cursor_y, cursor_x + 7, cursor_y + 15);
+			}
+			sheet_refresh(sheet, cursor_x, cursor_y, cursor_x + 8, cursor_y + 16);
 		}
 	}
+}
+int cons_newline(int cursor_y, struct SHEET *sheet){
+	int x, y;
+	if (cursor_y < 28 + 112) {
+		cursor_y += 16; //下一行 
+	} else {
+		//滚动 
+		for (y = 28; y < 28 + 112; y++) {
+			for (x = 8; x < 8 + 240; x++) {
+				sheet->buf[x + y * sheet->bxsize] = sheet->buf[x + (y + 16) * sheet->bxsize];
+			}
+		}
+		for (y = 28 + 112; y < 28 + 128; y++) {
+			for (x = 8; x < 8 + 240; x++) {
+				sheet->buf[x + y * sheet->bxsize] = COL8_000000;
+			}
+		}
+		sheet_refresh(sheet, 8, 28, 8 + 240, 28 + 128);
+	}
+	return cursor_y;
 }
 
 
