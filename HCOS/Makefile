@@ -1,4 +1,7 @@
-OBJS_BOOTPACK = bootpack.obj naskfunc.obj hankaku.obj graphic.obj dsctbl.obj int.obj fifo.obj InputDevice.obj memory.obj sheet.obj timer.obj rbtree.obj mtask.obj
+OBJS_BOOTPACK = bootpack.obj naskfunc.obj hankaku.obj graphic.obj \
+                dsctbl.obj int.obj fifo.obj InputDevice.obj memory.obj \
+                sheet.obj timer.obj rbtree.obj mtask.obj file.obj window.obj \
+                console.obj
 
 TOOLPATH = tools/
 INCPATH  = tools/hcos01/
@@ -43,13 +46,20 @@ bootpack.bim : $(OBJS_BOOTPACK) Makefile
 
 bootpack.hrb : bootpack.bim Makefile
 	$(BIM2HRB) bootpack.bim bootpack.hrb 0
+    
+hlt.hrb : hlt.nas Makefile
+	$(NASK) hlt.nas hlt.hrb hlt.lst
 
 hcos.sys : asmhead.bin bootpack.hrb Makefile
 	copy /B asmhead.bin+bootpack.hrb hcos.sys
 
-hcos.img : ipl10.bin hcos.sys Makefile
+hcos.img : ipl10.bin hcos.sys hlt.hrb Makefile
 	$(EDIMG)   imgin:tools/fdimg0at.tek \
-		wbinimg src:ipl10.bin len:512 from:0 to:0  copy from:hcos.sys to:@: imgout:hcos.img
+		wbinimg src:ipl10.bin len:512 from:0 to:0 \
+        copy from:hcos.sys to:@: \
+		copy from:ipl10.nas to:@: \
+		copy from:hlt.hrb to:@: \
+		imgout:hcos.img
 
 # “ª∞„πÊ‘Ú
 %.gas : %.c Makefile
@@ -69,7 +79,6 @@ img :
 clean :
 	-$(DEL) *.bin
 	-$(DEL) *.lst
-	-$(DEL) *.gas
 	-$(DEL) *.obj
 	-$(DEL) hcos.sys
 	-$(DEL) bootpack.map
@@ -79,3 +88,4 @@ clean :
 src_only :
 	$(MAKE) clean
 	-$(DEL) hcos.img
+	-$(DEL) *.hrb

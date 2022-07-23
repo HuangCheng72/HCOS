@@ -5,3 +5,7 @@ struct FILEINFO {
 	unsigned short time, date, clustno;
 	unsigned int size;
 };
+
+//将磁盘中的FAT解压缩 
+void file_readfat(int *fat, unsigned char *img);
+void file_loadfile(int clustno, int size, char *buf, int *fat, char *img);

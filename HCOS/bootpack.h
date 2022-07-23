@@ -10,5 +10,7 @@
 #include "timer.h" 
 #include "mtask.h" 
 #include "file.h"
+#include "window.h"
+#include "console.h"
 //naskfunc.nas中给出的函数
 #include "naskfunction.h"
