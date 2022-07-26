@@ -47,18 +47,22 @@ bootpack.bim : $(OBJS_BOOTPACK) Makefile
 bootpack.hrb : bootpack.bim Makefile
 	$(BIM2HRB) bootpack.bim bootpack.hrb 0
     
-hlt.hrb : hlt.nas Makefile
-	$(NASK) hlt.nas hlt.hrb hlt.lst
+hello.hrb : hello.nas Makefile
+	$(NASK) hello.nas hello.hrb hello.lst
+
+hello2.hrb : hello2.nas Makefile
+	$(NASK) hello2.nas hello2.hrb hello2.lst
 
 hcos.sys : asmhead.bin bootpack.hrb Makefile
 	copy /B asmhead.bin+bootpack.hrb hcos.sys
 
-hcos.img : ipl10.bin hcos.sys hlt.hrb Makefile
+hcos.img : ipl10.bin hcos.sys hello.hrb hello2.hrb Makefile
 	$(EDIMG)   imgin:tools/fdimg0at.tek \
 		wbinimg src:ipl10.bin len:512 from:0 to:0 \
         copy from:hcos.sys to:@: \
 		copy from:ipl10.nas to:@: \
-		copy from:hlt.hrb to:@: \
+		copy from:hello.hrb to:@: \
+		copy from:hello2.hrb to:@: \
 		imgout:hcos.img
 
 # “ª∞„πÊ‘Ú

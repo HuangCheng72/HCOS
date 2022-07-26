@@ -18,3 +18,5 @@ void asm_inthandler27(void);
 void asm_inthandler2c(void);
 unsigned int memtest_sub(unsigned int start, unsigned int end);
 void farjmp(int eip, int cs);//这个的详细解释在书P287页 
+void farcall(int eip, int cs);
+void asm_hrb_api(void);
