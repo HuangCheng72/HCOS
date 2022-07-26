@@ -1,6 +1,8 @@
 #include "bootpack.h"
 
 void console_task(struct SHEET *sheet, unsigned int memtotal){
+	//光标闪烁定时器指针 
+	struct TIMER *timer;
 	struct TASK *task = task_now();
 	int i, fifobuf[128], cursor_x = 16, cursor_y = 28, cursor_c = -1;
 	char s[30], cmdline[30], *p;
@@ -13,7 +15,12 @@ void console_task(struct SHEET *sheet, unsigned int memtotal){
 	struct SEGMENT_DESCRIPTOR *gdt = (struct SEGMENT_DESCRIPTOR *) ADR_GDT;
 
 	fifo32_init(&task->fifo, 128, fifobuf, task);
-	timer_insert(&task->fifo,1,50);
+	//申请定时器用于光标闪烁 
+	timer = timer_alloc();
+	timer_init(timer, &task->fifo, 1);
+	timer_settime(timer, 50);
+	
+	file_readfat(fat, (unsigned char *) (ADR_DISKIMG + 0x000200));
 
 	//显示提示符
 	putfonts8_asc_sht(sheet, 8, 28, COL8_FFFFFF, COL8_000000, ">", 1);
@@ -28,16 +35,17 @@ void console_task(struct SHEET *sheet, unsigned int memtotal){
 			io_sti();
 			if (i <= 1) { //数据为光标闪烁数据 
 				if (i != 0) {
-					timer_insert(&task->fifo,0,50);
+					timer_init(timer, &task->fifo, 0);
 					if (cursor_c >= 0) {
 						cursor_c = COL8_FFFFFF;
 					}
 				} else {
-					timer_insert(&task->fifo,1,50);
+					timer_init(timer, &task->fifo, 1);
 					if (cursor_c >= 0) {
 						cursor_c = COL8_000000;
 					}
 				}
+				timer_settime(timer, 50);
 			}
 			if (i == 2) {	//光标打开 
 				cursor_c = COL8_FFFFFF;

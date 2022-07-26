@@ -86,8 +86,9 @@ struct TASK *task_init(struct MEMMAN *memman){
 	task_add(task);
 	task_switchsub();	//修改设置
 	load_tr(task->sel);
-	//插入任务切换定时器 
-	task_timer = timer_insert(0,0,task->priority);
+	//申请任务切换定时器 
+	task_timer = timer_alloc();
+	timer_settime(task_timer, task->priority);
     
     //插入闲置任务
     idle = task_alloc();
@@ -180,8 +181,8 @@ void task_switch(void){
 		tl = &taskctl->level[taskctl->now_lv];
 	}
 	new_task = tl->tasks[tl->now];
-	//插入任务切换定时器 
-	task_timer = timer_insert(0,0,new_task->priority);
+	//设置任务切换定时器 
+	timer_settime(task_timer, new_task->priority);
 	if (new_task != now_task) {
 		farjmp(0, new_task->sel);
 	}

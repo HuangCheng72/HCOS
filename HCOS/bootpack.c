@@ -22,6 +22,8 @@ void HariMain(void){
 	struct SHEET *sht_back, *sht_mouse, *sht_win, *sht_cons;
 	//任务的指针 
 	struct TASK *task_a, *task_cons;
+	//定时器指针 
+	struct TIMER *timer;
 	//buf_mouse就是之前的mcursor，背景，鼠标，窗口的绘制数据 
 	unsigned char *buf_back, buf_mouse[256], *buf_win, *buf_cons;
 	//十六进制的键盘代码 
@@ -113,8 +115,10 @@ void HariMain(void){
 	make_textbox8(sht_win, 8, 28, 128, 16, COL8_FFFFFF); //绘制文本框
 	cursor_x = 8;
 	cursor_c = COL8_FFFFFF;
-	//插入定时器，用于光标闪烁 
-	timer_insert(&fifo,1,50); 
+	//申请、设置定时器，用于光标闪烁 
+	timer = timer_alloc();
+	timer_init(timer, &fifo, 1);
+	timer_settime(timer, 50);
 	
 	//鼠标图层和绘制 
 	sht_mouse = sheet_alloc(shtctl);
@@ -282,16 +286,17 @@ void HariMain(void){
 				}
 			} else if (i <= 1) { //光标用数据
 				if (i != 0) {
-                    timer_insert(&fifo,0,50); //插入新的定时器 
+                    timer_init(timer, &fifo, 0); //插入新的定时器，数据改为0 
 					if (cursor_c >= 0) {
 						cursor_c = COL8_000000;
 					}
 				} else {
-					timer_insert(&fifo,1,50); //插入新的定时器 
+					timer_init(timer, &fifo, 1); //插入新的定时器，数据改为1 
 					if (cursor_c >= 0) {
 						cursor_c = COL8_FFFFFF;
 					}
 				}
+				timer_settime(timer, 50); //设置时间为50 
 				if (cursor_c >= 0) {
 					//覆盖光标位置 
 					boxfill8(sht_win->buf, sht_win->bxsize, cursor_c, cursor_x, 28, cursor_x + 7, 43);
