@@ -135,7 +135,7 @@ void timer_settime(struct TIMER *timer, unsigned int timeout){
 int timer_cancel(struct TIMER *timer){
 	if(timerctl.total < timer->index){
 		//定时器不属于已经申请的定时器之一，就返回
-		return; 
+		return 1; 
 	}
 	//给定的定时器是否已经在堆中
     if(timerctl.size >= timer->index){

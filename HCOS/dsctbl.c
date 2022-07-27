@@ -35,11 +35,14 @@ void init_gdtidt(void){
 	//这里的2*8表示asm_inthandler21属于哪一个段，这里意思是段号为2，乘以8之前也说了，每个段的信息只有八个字节
 	//上面也说了段号为2的段是给bootpack.hrb准备的
 	//最后的 AR_INTGATE32的值说明把IDT的属性设定为0x008e，这是表示中断处理的有效设定。 
+	set_gatedesc(idt + 0x0c, (int) asm_inthandler0c, 2 * 8, AR_INTGATE32);
+	set_gatedesc(idt + 0x0d, (int) asm_inthandler0d, 2 * 8, AR_INTGATE32);
 	set_gatedesc(idt + 0x20, (int) asm_inthandler20, 2 * 8, AR_INTGATE32);
 	set_gatedesc(idt + 0x21, (int) asm_inthandler21, 2 * 8, AR_INTGATE32);
 	set_gatedesc(idt + 0x27, (int) asm_inthandler27, 2 * 8, AR_INTGATE32);
 	set_gatedesc(idt + 0x2c, (int) asm_inthandler2c, 2 * 8, AR_INTGATE32);
-	set_gatedesc(idt + 0x40, (int) asm_hrb_api,      2 * 8, AR_INTGATE32);
+	set_gatedesc(idt + 0x40, (int) asm_hrb_api,      2 * 8, AR_INTGATE32 + 0x60);
+	
  
 	return;
 }
