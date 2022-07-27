@@ -20,3 +20,4 @@ void inthandler2c(int *esp); //鼠标中断处理
 void enable_mouse(struct FIFO32 *fifo, int data0, struct MOUSE_DEC *mdec);//设置鼠标可用，传入值是要设置鼠标的初始状态
 void init_keyboard(struct FIFO32 *fifo, int data0);//键盘初始化
 int mouse_decode(struct MOUSE_DEC *mdec, unsigned char dat); //鼠标数据解码 
+void wait_KBC_sendready(void);//等待键盘控制电路准备完毕 

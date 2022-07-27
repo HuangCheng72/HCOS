@@ -28,3 +28,4 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 //ÖĞ¶Ï´¦Àí 
 int *inthandler0d(int *esp);
 int *inthandler0c(int *esp);
+void hrb_api_linewin(struct SHEET *sht, int x0, int y0, int x1, int y1, int col);
