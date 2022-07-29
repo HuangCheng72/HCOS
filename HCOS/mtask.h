@@ -15,6 +15,13 @@ struct TASK {
 	int level, priority; //在第几个级别，优先级
 	struct FIFO32 fifo;//任务所使用的缓冲区 
 	struct TSS32 tss; //TSS
+    struct SEGMENT_DESCRIPTOR ldt[2];
+	struct CONSOLE *cons;
+	int ds_base, cons_stack;
+	struct FILEHANDLE *fhandle;
+	int *fat;
+	char *cmdline;
+	unsigned char langmode, langbyte1;
 };
 struct TASKLEVEL {
 	int running; //正在运行任务数

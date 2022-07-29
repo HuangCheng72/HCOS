@@ -26,5 +26,6 @@ struct TIMER *timer_alloc(void); //申请一个定时器
 void timer_free(struct TIMER *timer); //释放一个定时器
 void timer_init(struct TIMER *timer, struct FIFO32 *fifo, int data); //初始化一个定时器的属性
 void timer_settime(struct TIMER *timer, unsigned int timeout); //设置定时器的予定时刻
-int timer_cancel(struct TIMER *timer); //删除掉alloc出来的一个定时器 
+int timer_cancel(struct TIMER *timer); //删除掉alloc出来的一个定时器
 void inthandler20(int *esp);//处理函数
+void timer_cancelall(struct FIFO32 *fifo); //删除掉绑定了某个缓冲区的全部定时器

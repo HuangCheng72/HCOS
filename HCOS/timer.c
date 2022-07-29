@@ -175,3 +175,17 @@ void inthandler20(int *esp){
 	return;
 }
 
+void timer_cancelall(struct FIFO32 *fifo){
+	int e, i;
+	struct TIMER *t;
+	e = io_load_eflags();
+	io_cli();	//½ûÖ¹ÖÐ¶Ï 
+	for (i = 1; i <= timerctl.total; i++) {
+		t = timerctl.ptr_timer[i];
+		if (t->fifo == fifo) {
+			timer_cancel(t);
+		}
+	}
+	io_store_eflags(e);
+	return;
+}

@@ -3,16 +3,15 @@
 void console_task(struct SHEET *sheet, int memtotal){
 	struct TASK *task = task_now();
 	struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
-	int i, fifobuf[128], *fat = (int *) memman_alloc_4k(memman, 4 * 2880);
+	int i, *fat = (int *) memman_alloc_4k(memman, 4 * 2880);
 	struct CONSOLE cons;
 	char cmdline[30];
 	cons.sht = sheet;
 	cons.cur_x =  8;
 	cons.cur_y = 28;
 	cons.cur_c = -1;
-	*((int *) 0x0fec) = (int) &cons;
+	task->cons = &cons;
 
-	fifo32_init(&task->fifo, 128, fifobuf, task);
 	cons.timer = timer_alloc();
 	timer_init(cons.timer, &task->fifo, 1);
 	timer_settime(cons.timer, 50);
@@ -29,7 +28,7 @@ void console_task(struct SHEET *sheet, int memtotal){
 		} else {
 			i = fifo32_get(&task->fifo);
 			io_sti();
-			if (i <= 1 && cons.sht != 0) { //数据为光标闪烁数据 
+			if (i <= 1) { //数据为光标闪烁数据 
 				if (i != 0) {
 					timer_init(cons.timer, &task->fifo, 0);
 					if (cons.cur_c >= 0) {
@@ -47,10 +46,7 @@ void console_task(struct SHEET *sheet, int memtotal){
 				cons.cur_c = COL8_FFFFFF;
 			}
 			if (i == 3) {	//光标关闭 
-				if (cons.sht != 0) {
-					boxfill8(cons.sht->buf, cons.sht->bxsize, COL8_000000,
-						cons.cur_x, cons.cur_y, cons.cur_x + 7, cons.cur_y + 15);
-				}
+				boxfill8(sheet->buf, sheet->bxsize, COL8_000000, cons.cur_x, cons.cur_y, cons.cur_x + 7, cons.cur_y + 15);
 				cons.cur_c = -1;
 			}
 			if (256 <= i && i <= 511) { //键盘数据
@@ -67,7 +63,8 @@ void console_task(struct SHEET *sheet, int memtotal){
 					cons_putchar(&cons, ' ', 0);
 					cmdline[cons.cur_x / 8 - 2] = 0;
 					cons_newline(&cons);
-					cons_runcmd(cmdline, &cons, fat, memtotal);	//执行命令 
+					//执行命令 
+					cons_runcmd(cmdline, &cons, fat, memtotal);
 					//显示提示符
 					cons_putchar(&cons, '>', 1);
 				} else {
@@ -263,7 +260,7 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline){
 		}
 		name[i] = cmdline[i];
 	}
-	name[i] = 0; //暂且将文件名后面置为0 
+	name[i] = 0; //文件名字符串结束符 
 
 	//寻找文件 
 	finfo = file_search(name, (struct FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
@@ -287,13 +284,13 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline){
 			datsiz = *((int *) (p + 0x0010));
 			dathrb = *((int *) (p + 0x0014));
 			q = (char *) memman_alloc_4k(memman, segsiz);
-			*((int *) 0xfe8) = (int) q;
-			set_segmdesc(gdt + 1003, finfo->size - 1, (int) p, AR_CODE32_ER + 0x60);
-			set_segmdesc(gdt + 1004, segsiz - 1,      (int) q, AR_DATA32_RW + 0x60);
+			task->ds_base = (int) q;
+			set_segmdesc(gdt + task->sel / 8 + 1000, finfo->size - 1, (int) p, AR_CODE32_ER + 0x60);
+			set_segmdesc(gdt + task->sel / 8 + 2000, segsiz - 1,      (int) q, AR_DATA32_RW + 0x60);
 			for (i = 0; i < datsiz; i++) {
 				q[esp + i] = p[dathrb + i];
 			}
-			start_app(0x1b, 1003 * 8, esp, 1004 * 8, &(task->tss.esp0));
+			start_app(0x1b, task->sel + 1000 * 8, esp, task->sel + 2000 * 8, &(task->tss.esp0));
 			shtctl = (struct SHTCTL *) *((int *) 0x0fe4);
 			for (i = 0; i < MAX_SHEETS; i++) {
 				sht = &(shtctl->sheets0[i]);
@@ -302,6 +299,7 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline){
 					sheet_free(sht);	//关闭 
 				}
 			}
+			timer_cancelall(&task->fifo);
 			memman_free_4k(memman, (int) q, segsiz);
 		} else {
 			cons_putstr0(cons, ".hrb file format error.\n");
@@ -315,9 +313,9 @@ int cmd_app(struct CONSOLE *cons, int *fat, char *cmdline){
 }
 
 int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax){
-	int ds_base = *((int *) 0xfe8);
 	struct TASK *task = task_now();
-	struct CONSOLE *cons = (struct CONSOLE *) *((int *) 0x0fec);
+	int ds_base = task->ds_base;
+	struct CONSOLE *cons = task->cons;
 	struct SHTCTL *shtctl = (struct SHTCTL *) *((int *) 0x0fe4);
 	struct SHEET *sht;
 	int *reg = &eax + 1;	/* eaxの次の番地 */
@@ -340,8 +338,8 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		sht->flags |= 0x10;
 		sheet_setbuf(sht, (char *) ebx + ds_base, esi, edi, eax);
 		make_window8((char *) ebx + ds_base, esi, edi, (char *) ecx + ds_base, 0);
-		sheet_slide(sht, 100, 50);
-		sheet_updown(sht, 3);	//图层高度为3，位于task_a之上 
+		sheet_slide(sht, (shtctl->xsize - esi) / 2, (shtctl->ysize - edi) / 2);
+		sheet_updown(sht, shtctl->top); //将窗口图层高度指定为当前鼠标所在图层的高度，鼠标移到上层 
 		reg[7] = (int) sht;
 	} else if (edx == 6) {
 		sht = (struct SHEET *) (ebx & 0xfffffffe);
@@ -404,7 +402,7 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 			if (i == 2) {	//光标打开
 				cons->cur_c = COL8_FFFFFF;
 			}
-			if (i == 3) {	//光标关闭
+			if (i == 3) {	//光标关闭 
 				cons->cur_c = -1;
 			}
 			if (i >= 256) { //键盘数据，通过任务A
@@ -420,25 +418,40 @@ int *hrb_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		timer_settime((struct TIMER *) ebx, eax);
 	} else if (edx == 19) {
 		timer_free((struct TIMER *) ebx);
+	} else if (edx == 20) {
+		if (eax == 0) {
+			i = io_in8(0x61);
+			io_out8(0x61, i & 0x0d);
+		} else {
+			i = 1193180000 / eax;
+			io_out8(0x43, 0xb6);
+			io_out8(0x42, i & 0xff);
+			io_out8(0x42, i >> 8);
+			i = io_in8(0x61);
+			io_out8(0x61, (i | 0x03) & 0x0f);
+		}
 	}
 	return 0;
 }
 //中断处理
 int *inthandler0c(int *esp){
-	struct CONSOLE *cons = (struct CONSOLE *) *((int *) 0x0fec);
 	struct TASK *task = task_now();
+	struct CONSOLE *cons = task->cons;
 	char s[30];
 	cons_putstr0(cons, "\nINT 0C :\n Stack Exception.\n");
 	sprintf(s, "EIP = %08X\n", esp[11]);
 	cons_putstr0(cons, s);
 	return &(task->tss.esp0);	//程序强制结束
 }
-//中断处理 
+//中断处理
 int *inthandler0d(int *esp){
-	struct CONSOLE *cons = (struct CONSOLE *) *((int *) 0x0fec);
 	struct TASK *task = task_now();
+	struct CONSOLE *cons = task->cons;
+	char s[30];
 	cons_putstr0(cons, "\nINT 0D :\n General Protected Exception.\n");
-	return &(task->tss.esp0);	//程序强制结束 
+	sprintf(s, "EIP = %08X\n", esp[11]);
+	cons_putstr0(cons, s);
+	return &(task->tss.esp0);	//程序强制结束
 }
 
 void hrb_api_linewin(struct SHEET *sht, int x0, int y0, int x1, int y1, int col){
@@ -488,5 +501,3 @@ void hrb_api_linewin(struct SHEET *sht, int x0, int y0, int x1, int y1, int col)
 
 	return;
 }
-
-
