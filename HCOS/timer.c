@@ -92,10 +92,10 @@ void timer_free(struct TIMER *timer){
         int index = timer->index;
         exchange(index,timerctl.size);
         timerctl.size--;
-        //然后把交换过来的元素调整顺序（下沉）
-        sink(index);
+        //然后调整顺序（下沉）
+        sink(1);
         //上浮调整
-        swim(index);
+        swim(timerctl.size);
         io_store_eflags(e);
     }
     return;
@@ -125,9 +125,8 @@ void timer_settime(struct TIMER *timer, unsigned int timeout){
     //然后再设置时刻
     timer->timeout = timeout;
     //上浮下沉调整堆
-    int index = timer->index;
-    swim(index);
-    sink(index);
+    swim(1);
+    sink(timerctl.size);
     io_store_eflags(e);
     return;
 }
