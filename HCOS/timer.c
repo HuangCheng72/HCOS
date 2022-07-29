@@ -136,6 +136,9 @@ int timer_cancel(struct TIMER *timer){
 		//定时器不属于已经申请的定时器之一，就返回
 		return 1; 
 	}
+    int e;
+	e = io_load_eflags();
+	io_cli(); //正在设置，禁止中断 
 	//给定的定时器是否已经在堆中
     if(timerctl.size >= timer->index){
         //在堆中，就先释放 
@@ -144,6 +147,7 @@ int timer_cancel(struct TIMER *timer){
     //再把指针直接交换到所有定时器最后，然后缩减所有定时器的规模 
     exchange(timer->index,timerctl.total);
     timerctl.total--;
+    io_store_eflags(e);
     return 1;
 }
 void inthandler20(int *esp){
