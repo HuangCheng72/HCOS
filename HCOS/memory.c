@@ -59,7 +59,7 @@ struct FREEINFO* my_search_addr(struct rb_node* rbnode, unsigned int addr){
 struct FREEINFO* my_findNode_addr(struct rb_root *root, unsigned int addr){
     return my_search_addr(root->rb_node, addr);
 }
-//将地址插入RBT中
+//将结点插入RBT中
 void insert_addr(struct rb_root *root, struct FREEINFO* node){
     struct rb_node **tmp = &(root->rb_node), *parent = 0;
     //寻找插入位置
@@ -106,12 +106,109 @@ void delete_addr(struct rb_root *root, struct FREEINFO* node){
     return;
 }
 
+//递归法查找"RBT"中size值大于等于指定size值的节点。没找到的话，返回0。
+struct FREEINFO* my_search_size(struct rb_node* rbnode, unsigned int size){
+    if(rbnode == 0){
+        return 0;
+    }
+    struct FREEINFO* mynode = container_of(rbnode, struct FREEINFO, rb_node_size);
+    if(mynode->size < size){
+        return my_search_size(mynode->rb_node_size.rb_right , size);
+    }else{
+        //找到一个大于等于的结点
+        if(mynode->size == size){
+            //等于就直接返回
+            if(mynode->next2){
+                //优先链表里面的，不要过多变动红黑树
+                return mynode->next2;
+            }
+            return mynode;
+        }
+        if(mynode->rb_node_size.rb_left == 0 ||  container_of(mynode->rb_node_size.rb_left, struct FREEINFO, rb_node_size)->size < size ){
+            //左孩子不存在，或者， 左孩子小于，本结点大于，那就只能是这个了
+            if(mynode->next2){
+                //优先链表里面的，不要过多变动红黑树
+                return mynode->next2;
+            }
+            return mynode;
+        }
+        return my_search_size(mynode->rb_node_size.rb_left , size);
+    }
+}
+struct FREEINFO* my_findNode_size(struct rb_root *root, unsigned int size){
+    return my_search_size(root->rb_node, size);
+}
+//将结点插入RBT中
+void insert_size(struct rb_root *root, struct FREEINFO* node){
+    if(node->pre2 || node->next2){
+        //防止重复插入
+        return;
+    }
+    struct rb_node **tmp = &(root->rb_node), *parent = 0;
+    //寻找插入位置
+    while (*tmp){
+        struct FREEINFO* my = container_of(*tmp, struct FREEINFO, rb_node_size);
+        parent = *tmp;
+        if (node->size < my->size)
+            tmp = &((*tmp)->rb_left);
+        else if (node->size > my->size)
+            tmp = &((*tmp)->rb_right);
+        else{
+            //已经有结点了就链接到链表上去
+            node->next2 = my->next2;
+            if(node->next2){
+                //如果后面还有结点的话，连接前驱
+                node->next2->pre2 = node;
+            }
+            node->pre2 = my;
+            my->next2 = node;
+            return;
+        }
+    }
+    //连接要插入的结点和父结点
+    rb_link_node(&node->rb_node_size, parent, tmp);
+    //插入该结点，并进行调整
+    rb_insert_color(&node->rb_node_size, root);
+    return;
+}
 
-//初始化内存管理，我的双向链表+RBT实现（RBT初始化）
+//RBT删除某个结点
+void delete_size(struct rb_root *root, struct FREEINFO* node){
+    //防止出现删除不存在结点的问题
+    //先查找
+    struct rb_node *rbnode = root->rb_node;
+    while (rbnode != 0){
+        struct FREEINFO* mynode = container_of(rbnode, struct FREEINFO, rb_node_size);
+        if (node->size < mynode->size)
+            rbnode = rbnode->rb_left;
+        else if (node->size > mynode->size)
+            rbnode = rbnode->rb_right;
+        else if(node->size == mynode->size){
+            if(mynode->next2 == 0 && mynode->pre2 == 0){
+                //如果是在红黑树中的结点，此时只有这个结点，直接从红黑树中删除就行
+                rb_erase(&node->rb_node_size, root);
+                return;
+            }else{
+                //如果不是在红黑树中的那个结点，直接删除就是了
+                node->pre2->next2 = node->next2;
+                if(node->next2){
+                    node->next2->pre2 = node->pre2;
+                }
+                node->next2 = 0;
+                node->pre2 = 0;
+                return;
+            }
+        }
+    }
+    return;
+}
+
+//初始化内存管理，我的双向链表+双RBT实现（RBT初始化）
 void memman_init(struct MEMMAN *man){
     man->lostsize = 0;		// 释放失败的内存大小总和，也就是丢失的碎片
     man->losts = 0;			// 释放失败的次数
     man->root_addr = RB_ROOT; //初始化根结点
+    man->root_size = RB_ROOT; //初始化根结点
     //构建链表关系，空余链表可以头插法插入结点，以头删法删除结点
     //先初始化两个头结点
     man->free[MEMMAN_FREES].next = 0;
@@ -138,49 +235,50 @@ unsigned int memman_total(struct MEMMAN *man){
     }
     return t;
 }
-//内存申请，我的双向链表实现版本
+//内存申请，我的双向链表+双RBT实现版本
 unsigned int memman_alloc(struct MEMMAN *man, unsigned int size){
-    struct FREEINFO* ptr =  man->free[MEMMAN_FREES].next;
-    unsigned int a;
-    while(ptr){
-        //找到一块足够大的内存
-        if (ptr->size >= size) {
-            a = ptr->addr;
-            ptr->addr += size;
-            ptr->size -= size;
-            //如果ptr的size都变成0了，那结点也没有存在的必要了，加入空余链表中
-            if(ptr->size == 0){
-                //把这个结点从RBT中删除
-                delete_addr(&man->root_addr , ptr);
-                //断开本结点和前后的联系
-                if(ptr->pre && ptr->next){
-                    //不是第一个结点或者最后一个结点
-                    ptr->pre->next = ptr->next;
-                    ptr->next->pre = ptr->pre;
-                }else{
-                    if(ptr->pre == 0){
-                        //第一个结点
-                        man->free[MEMMAN_FREES].next = ptr->next;
-                        ptr->next->pre = 0;
-                    }else{
-                        //最后一个结点
-                        ptr->pre->next = 0;
-                        man->free[MEMMAN_FREES+1].pre = ptr->pre;
-                    }
-                }
-                //然后当前结点加入空余链表存着
-                ptr->next = man->free[MEMMAN_FREES+1].next;
-                man->free[MEMMAN_FREES+1].next = ptr;
-
-            }
-            return a;
-        }
-        ptr = ptr->next;
+    struct FREEINFO* ptr =  my_findNode_size(&man->root_size, size);
+    if(ptr == 0){
+        return 0;
     }
-    //没可用空间直接返回0就是了
-    return 0;
+    unsigned int a;
+    a = ptr->addr;
+    ptr->addr += size;
+    delete_size(&man->root_size, ptr);
+    ptr->size -= size;
+    if(ptr->size == 0){
+        //把这个结点从RBT中删除
+        delete_addr(&man->root_addr , ptr);
+        //断开本结点和前后的联系
+        if(ptr->pre && ptr->next){
+            //不是第一个结点或者最后一个结点
+            ptr->pre->next = ptr->next;
+            ptr->next->pre = ptr->pre;
+        }else{
+            if(ptr->pre == 0 && ptr->next){
+                //第一个结点
+                man->free[MEMMAN_FREES].next = ptr->next;
+                ptr->next->pre = 0;
+            }else if(ptr->pre && ptr->next == 0){
+                //最后一个结点
+                ptr->pre->next = 0;
+                man->free[MEMMAN_FREES+1].pre = ptr->pre;
+            }else{
+                //ptr的pre和next都是0，就是说要删除这个唯一的结点，那就将其加入空余链表中
+                man->free[MEMMAN_FREES+1].pre = &man->free[MEMMAN_FREES];
+                ptr->next2 = man->free[MEMMAN_FREES + 1].next;
+                man->free[MEMMAN_FREES + 1].next = ptr;
+            }
+        }
+        //然后当前结点加入空余链表存着
+        ptr->next = man->free[MEMMAN_FREES+1].next;
+        man->free[MEMMAN_FREES+1].next = ptr;
+        return a;
+    }
+    insert_size(&man->root_size, ptr);
+    return a;
 }
-//我的双向链表+RBT实现版本
+//我的双向链表+双RBT实现版本
 int memman_free(struct MEMMAN *man, unsigned int addr, unsigned int size){
     //这一步是找到正确的归还位置
     struct FREEINFO* ptr =  my_findNode_addr(&man->root_addr , addr);
@@ -193,7 +291,10 @@ int memman_free(struct MEMMAN *man, unsigned int addr, unsigned int size){
         if(ptr != &man->free[MEMMAN_FREES] && addr == ptr->addr + ptr->size){
             //如果新插入的结点可以直接合并到最末尾结点就不要插入了
             //修改之后RBT依然有序，无需重新插入RBT
+            //地址变动就修改
+			delete_size(&man->root_size, ptr); 
             ptr->size += size;
+            insert_size(&man->root_size, ptr);
             return 0;
         }
         ptr->next = man->free[MEMMAN_FREES+1].next;
@@ -201,7 +302,10 @@ int memman_free(struct MEMMAN *man, unsigned int addr, unsigned int size){
         man->free[MEMMAN_FREES+1].next = man->free[MEMMAN_FREES+1].next->next;
         //对新结点写入数据
         ptr->next->addr = addr;
+        //地址变动就修改
+        delete_size(&man->root_size, ptr->next); 
         ptr->next->size = size;
+        insert_size(&man->root_size, ptr->next);
         ptr->next->next = 0;
         if(ptr == &man->free[MEMMAN_FREES]){
             //如果是头结点的话，新结点pre不要指向头结点，这是为了合并的时候不要合并到头结点
@@ -218,6 +322,8 @@ int memman_free(struct MEMMAN *man, unsigned int addr, unsigned int size){
         if(addr + size == ptr->addr){
             //修改之后RBT依然有序，无需重新插入RBT
             ptr->addr = addr;
+            //地址变动就修改
+            delete_size(&man->root_size, ptr); 
             ptr->size += size;
         }
         //再尝试往前合并
@@ -226,7 +332,10 @@ int memman_free(struct MEMMAN *man, unsigned int addr, unsigned int size){
             if(ptr->pre->addr + ptr->pre->size == addr){
                 //是否已经合并到ptr结点
                 if(addr == ptr->addr){
+                	//地址变动就修改
+                	delete_size(&man->root_size, ptr->pre); 
                     ptr->pre->size += ptr->size;
+                    insert_size(&man->root_size, ptr->pre);
                     //已经合并到ptr结点，就要把ptr结点从RBT中删去
                     delete_addr(&man->root_addr,ptr);
                     //把ptr结点回收到空余链表中去
@@ -236,13 +345,18 @@ int memman_free(struct MEMMAN *man, unsigned int addr, unsigned int size){
                     man->free[MEMMAN_FREES+1].next = ptr;
                 }else{
                     //没有合并到ptr结点，就合并到ptr->pre结点就行
-                    ptr->pre->size += size;
+                    
+                    //地址变动就修改
+                	delete_size(&man->root_size, ptr->pre); 
+                    ptr->pre->size += ptr->size;
+                    insert_size(&man->root_size, ptr->pre);
                 }
                 return 0;
             } else {
                 //是否已经合并到ptr结点
                 if(addr == ptr->addr){
-                    //已经合并到ptr结点，不用再新增
+                    //已经合并到ptr结点，不用再新增结点 
+                    insert_size(&man->root_size, ptr);
                     return 0;
                 }
                 //如果不可以往前合并，又没有合并到ptr结点，那就只能插入新结点了
@@ -262,6 +376,7 @@ int memman_free(struct MEMMAN *man, unsigned int addr, unsigned int size){
                     //写入数据，返回结果
                     ptr->pre->addr = addr;
                     ptr->pre->size = size;
+                    insert_size(&man->root_size, ptr->pre);
                     insert_addr(&man->root_addr,ptr->pre);//RBT插入
                     return 0;
                 }
@@ -271,6 +386,7 @@ int memman_free(struct MEMMAN *man, unsigned int addr, unsigned int size){
         //判断是否已经合并到ptr结点
         if(addr == ptr->addr){
             //已经合并到ptr结点，不用再新增
+            insert_size(&man->root_size, ptr);
             return 0;
         }
         //到这里，那就只能是在头结点的后面插入一个新结点了
@@ -288,6 +404,7 @@ int memman_free(struct MEMMAN *man, unsigned int addr, unsigned int size){
             //写入数据，返回结果
             ptr->pre->addr = addr;
             ptr->pre->size = size;
+            insert_size(&man->root_size, ptr->pre);
             insert_addr(&man->root_addr,ptr->pre);//RBT插入
             return 0;
         }
