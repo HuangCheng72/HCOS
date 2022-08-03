@@ -1,224 +1,150 @@
-OBJS_BOOTPACK = bootpack.obj naskfunc.obj hankaku.obj graphic.obj \
-                dsctbl.obj int.obj fifo.obj InputDevice.obj memory.obj \
-                sheet.obj timer.obj rbtree.obj mtask.obj file.obj window.obj \
-                console.obj
-
-TOOLPATH = tools/
-INCPATH  = tools/hcos01/
+TOOLPATH = hcos/tools/
+INCPATH  = hcos/tools/hcos01/hcos01
 
 MAKE     = $(TOOLPATH)make.exe -r
-NASK     = $(TOOLPATH)nask.exe
-CC1      = $(TOOLPATH)cc1.exe -I$(INCPATH) -Os -Wall -quiet
-GAS2NASK = $(TOOLPATH)gas2nask.exe -a
-OBJ2BIM  = $(TOOLPATH)obj2bim.exe
-MAKEFONT = $(TOOLPATH)makefont.exe
-BIN2OBJ  = $(TOOLPATH)bin2obj.exe
-BIM2HRB  = $(TOOLPATH)bim2hrb.exe
-RULEFILE = $(TOOLPATH)hcos01/hcos01.rul
 EDIMG    = $(TOOLPATH)edimg.exe
 IMGTOL   = $(TOOLPATH)imgtol.com
 COPY     = copy
 DEL      = del
 
-#默认动作
+# 僨僼僅儖僩摦嶌
 
 default :
-	$(MAKE) img
-
-#文件生成特殊规则
-
-ipl10.bin : ipl10.nas Makefile
-	$(NASK) ipl10.nas ipl10.bin ipl10.lst
-
-asmhead.bin : asmhead.nas Makefile
-	$(NASK) asmhead.nas asmhead.bin asmhead.lst
-
-hankaku.bin : hankaku.txt Makefile
-	$(MAKEFONT) hankaku.txt hankaku.bin
-
-hankaku.obj : hankaku.bin Makefile
-	$(BIN2OBJ) hankaku.bin hankaku.obj _hankaku
-
-bootpack.bim : $(OBJS_BOOTPACK) Makefile
-	$(OBJ2BIM) @$(RULEFILE) out:bootpack.bim stack:3136k map:bootpack.map \
-		$(OBJS_BOOTPACK)
-# 3MB+64KB=3136KB
-
-bootpack.hrb : bootpack.bim Makefile
-	$(BIM2HRB) bootpack.bim bootpack.hrb 0
-
-hcos.sys : asmhead.bin bootpack.hrb Makefile
-	copy /B asmhead.bin+bootpack.hrb hcos.sys
-    
-
-hello.hrb : hello.nas Makefile
-	$(NASK) hello.nas hello.hrb hello.lst
-
-hello2.hrb : hello2.nas Makefile
-	$(NASK) hello2.nas hello2.hrb hello2.lst
-
-a.bim : a.obj a_nask.obj Makefile
-	$(OBJ2BIM) @$(RULEFILE) out:a.bim map:a.map a.obj a_nask.obj
-
-a.hrb : a.bim Makefile
-	$(BIM2HRB) a.bim a.hrb 0
-
-hello3.bim : hello3.obj a_nask.obj Makefile
-	$(OBJ2BIM) @$(RULEFILE) out:hello3.bim map:hello3.map hello3.obj a_nask.obj
-
-hello3.hrb : hello3.bim Makefile
-	$(BIM2HRB) hello3.bim hello3.hrb 0
-
-hello4.bim : hello4.obj a_nask.obj Makefile
-	$(OBJ2BIM) @$(RULEFILE) out:hello4.bim stack:1k map:hello4.map \
-		hello4.obj a_nask.obj
-
-hello4.hrb : hello4.bim Makefile
-	$(BIM2HRB) hello4.bim hello4.hrb 0
-
-hello5.bim : hello5.obj Makefile
-	$(OBJ2BIM) @$(RULEFILE) out:hello5.bim stack:1k map:hello5.map hello5.obj
-
-hello5.hrb : hello5.bim Makefile
-	$(BIM2HRB) hello5.bim hello5.hrb 0
-
-winhelo.bim : winhelo.obj a_nask.obj Makefile
-	$(OBJ2BIM) @$(RULEFILE) out:winhelo.bim stack:1k map:winhelo.map \
-		winhelo.obj a_nask.obj
-
-winhelo.hrb : winhelo.bim Makefile
-	$(BIM2HRB) winhelo.bim winhelo.hrb 0
-
-winhelo2.bim : winhelo2.obj a_nask.obj Makefile
-	$(OBJ2BIM) @$(RULEFILE) out:winhelo2.bim stack:1k map:winhelo2.map \
-		winhelo2.obj a_nask.obj
-
-winhelo2.hrb : winhelo2.bim Makefile
-	$(BIM2HRB) winhelo2.bim winhelo2.hrb 0
-
-winhelo3.bim : winhelo3.obj a_nask.obj Makefile
-	$(OBJ2BIM) @$(RULEFILE) out:winhelo3.bim stack:1k map:winhelo3.map \
-		winhelo3.obj a_nask.obj
-
-winhelo3.hrb : winhelo3.bim Makefile
-	$(BIM2HRB) winhelo3.bim winhelo3.hrb 40k
-
-star1.bim : star1.obj a_nask.obj Makefile
-	$(OBJ2BIM) @$(RULEFILE) out:star1.bim stack:1k map:star1.map \
-		star1.obj a_nask.obj
-
-star1.hrb : star1.bim Makefile
-	$(BIM2HRB) star1.bim star1.hrb 47k
-
-stars.bim : stars.obj a_nask.obj Makefile
-	$(OBJ2BIM) @$(RULEFILE) out:stars.bim stack:1k map:stars.map \
-		stars.obj a_nask.obj
-
-stars.hrb : stars.bim Makefile
-	$(BIM2HRB) stars.bim stars.hrb 47k
-
-stars2.bim : stars2.obj a_nask.obj Makefile
-	$(OBJ2BIM) @$(RULEFILE) out:stars2.bim stack:1k map:stars2.map \
-		stars2.obj a_nask.obj
-
-stars2.hrb : stars2.bim Makefile
-	$(BIM2HRB) stars2.bim stars2.hrb 47k
-
-lines.bim : lines.obj a_nask.obj Makefile
-	$(OBJ2BIM) @$(RULEFILE) out:lines.bim stack:1k map:lines.map \
-		lines.obj a_nask.obj
-
-lines.hrb : lines.bim Makefile
-	$(BIM2HRB) lines.bim lines.hrb 48k
-
-walk.bim : walk.obj a_nask.obj Makefile
-	$(OBJ2BIM) @$(RULEFILE) out:walk.bim stack:1k map:walk.map \
-		walk.obj a_nask.obj
-
-walk.hrb : walk.bim Makefile
-	$(BIM2HRB) walk.bim walk.hrb 48k
-
-noodle.bim : noodle.obj a_nask.obj Makefile
-	$(OBJ2BIM) @$(RULEFILE) out:noodle.bim stack:1k map:noodle.map \
-		noodle.obj a_nask.obj
-
-noodle.hrb : noodle.bim Makefile
-	$(BIM2HRB) noodle.bim noodle.hrb 40k
-
-beepdown.bim : beepdown.obj a_nask.obj Makefile
-	$(OBJ2BIM) @$(RULEFILE) out:beepdown.bim stack:1k map:beepdown.map \
-		beepdown.obj a_nask.obj
-
-beepdown.hrb : beepdown.bim Makefile
-	$(BIM2HRB) beepdown.bim beepdown.hrb 40k
-
-color.bim : color.obj a_nask.obj Makefile
-	$(OBJ2BIM) @$(RULEFILE) out:color.bim stack:1k map:color.map \
-		color.obj a_nask.obj
-
-color.hrb : color.bim Makefile
-	$(BIM2HRB) color.bim color.hrb 56k
-
-color2.bim : color2.obj a_nask.obj Makefile
-	$(OBJ2BIM) @$(RULEFILE) out:color2.bim stack:1k map:color2.map \
-		color2.obj a_nask.obj
-
-color2.hrb : color2.bim Makefile
-	$(BIM2HRB) color2.bim color2.hrb 56k
-
-hcos.img : ipl10.bin hcos.sys Makefile \
-		hello.hrb hello2.hrb a.hrb hello3.hrb hello4.hrb hello5.hrb \
-		winhelo.hrb winhelo2.hrb winhelo3.hrb star1.hrb stars.hrb stars2.hrb \
-		lines.hrb walk.hrb noodle.hrb beepdown.hrb color.hrb color2.hrb
-	$(EDIMG)   imgin:tools/fdimg0at.tek \
-		wbinimg src:ipl10.bin len:512 from:0 to:0 \
-        copy from:hcos.sys to:@: \
-		copy from:ipl10.nas to:@: \
-		copy from:hello.hrb to:@: \
-		copy from:hello2.hrb to:@: \
-		copy from:a.hrb to:@: \
-		copy from:hello3.hrb to:@: \
-		copy from:hello4.hrb to:@: \
-		copy from:hello5.hrb to:@: \
-		copy from:winhelo.hrb to:@: \
-		copy from:winhelo2.hrb to:@: \
-		copy from:winhelo3.hrb to:@: \
-		copy from:star1.hrb to:@: \
-		copy from:stars.hrb to:@: \
-		copy from:stars2.hrb to:@: \
-		copy from:lines.hrb to:@: \
-		copy from:walk.hrb to:@: \
-        copy from:noodle.hrb to:@: \
-		copy from:beepdown.hrb to:@: \
-		copy from:color.hrb to:@: \
-		copy from:color2.hrb to:@: \
-		imgout:hcos.img
-
-# 一般规则
-%.gas : %.c Makefile
-	$(CC1) -o $*.gas $*.c
-
-%.nas : %.gas Makefile
-	$(GAS2NASK) $*.gas $*.nas
-
-%.obj : %.nas Makefile
-	$(NASK) $*.nas $*.obj $*.lst
-
-# 常用命令行
-
-img :
 	$(MAKE) hcos.img
 
+# 僼傽僀儖惗惉婯懃
+
+hcos.img : hcos/ipl09.bin hcos/hcos.sys Makefile \
+		a/a.hrb hello3/hello3.hrb hello4/hello4.hrb hello5/hello5.hrb \
+		winhelo/winhelo.hrb winhelo2/winhelo2.hrb winhelo3/winhelo3.hrb \
+		star1/star1.hrb stars/stars.hrb stars2/stars2.hrb \
+		lines/lines.hrb walk/walk.hrb noodle/noodle.hrb \
+		beepdown/beepdown.hrb color/color.hrb color2/color2.hrb \
+		sosu/sosu.hrb sosu2/sosu2.hrb sosu3/sosu3.hrb \
+		type/type.hrb iroha/iroha.hrb chklang/chklang.hrb \
+		notrec/notrec.hrb bball/bball.hrb invader/invader.hrb \
+		calc/calc.hrb tview/tview.hrb mmlplay/mmlplay.hrb gview/gview.hrb
+	$(EDIMG)   imgin:hcos/tools/fdimg0at.tek \
+		wbinimg src:hcos/ipl09.bin len:512 from:0 to:0 \
+		copy from:hcos/hcos.sys to:@: \
+		copy from:ipl09.nas to:@: \
+		copy from:make.bat to:@: \
+		copy from:a/a.hrb to:@: \
+		copy from:hello3/hello3.hrb to:@: \
+		copy from:hello4/hello4.hrb to:@: \
+		copy from:hello5/hello5.hrb to:@: \
+		copy from:winhelo/winhelo.hrb to:@: \
+		copy from:winhelo2/winhelo2.hrb to:@: \
+		copy from:winhelo3/winhelo3.hrb to:@: \
+		copy from:star1/star1.hrb to:@: \
+		copy from:stars/stars.hrb to:@: \
+		copy from:stars2/stars2.hrb to:@: \
+		copy from:lines/lines.hrb to:@: \
+		copy from:walk/walk.hrb to:@: \
+		copy from:noodle/noodle.hrb to:@: \
+		copy from:beepdown/beepdown.hrb to:@: \
+		copy from:color/color.hrb to:@: \
+		copy from:color2/color2.hrb to:@: \
+		copy from:sosu/sosu.hrb to:@: \
+		copy from:sosu2/sosu2.hrb to:@: \
+		copy from:sosu3/sosu3.hrb to:@: \
+		copy from:type/type.hrb to:@: \
+		copy from:iroha/iroha.hrb to:@: \
+		copy from:chklang/chklang.hrb to:@: \
+		copy from:euc.txt to:@: \
+		copy from:notrec/notrec.hrb to:@: \
+		copy from:bball/bball.hrb to:@: \
+		copy from:invader/invader.hrb to:@: \
+		copy from:calc/calc.hrb to:@: \
+		copy from:tview/tview.hrb to:@: \
+		copy from:mmlplay/mmlplay.hrb to:@: \
+		copy from:mmldata/kirakira.mml to:@: \
+		copy from:mmldata/fujisan.mml to:@: \
+		copy from:mmldata/daigo.mml to:@: \
+		copy from:mmldata/daiku.mml to:@: \
+		copy from:gview/gview.hrb to:@: \
+		copy from:pictdata/fujisan.jpg to:@: \
+		copy from:pictdata/night.bmp to:@: \
+		copy from:nihongo/nihongo.fnt to:@: \
+		imgout:hcos.img
+
+# 僐儅儞僪
+
 clean :
-	-$(DEL) *.bin
-	-$(DEL) *.lst
-	-$(DEL) *.obj
-	-$(DEL) *.map
-	-$(DEL) *.bim
-	-$(DEL) *.hrb
-	-$(DEL) hcos.sys
+# 壗傕偟側偄
 
 src_only :
 	$(MAKE) clean
 	-$(DEL) hcos.img
-	-$(DEL) *.hrb
+
+clean_full :
+	$(MAKE) -C hcos		clean
+	$(MAKE) -C apilib		clean
+	$(MAKE) -C a			clean
+	$(MAKE) -C hello3		clean
+	$(MAKE) -C hello4		clean
+	$(MAKE) -C hello5		clean
+	$(MAKE) -C winhelo		clean
+	$(MAKE) -C winhelo2		clean
+	$(MAKE) -C winhelo3		clean
+	$(MAKE) -C star1		clean
+	$(MAKE) -C stars		clean
+	$(MAKE) -C stars2		clean
+	$(MAKE) -C lines		clean
+	$(MAKE) -C walk			clean
+	$(MAKE) -C noodle		clean
+	$(MAKE) -C beepdown		clean
+	$(MAKE) -C color		clean
+	$(MAKE) -C color2		clean
+	$(MAKE) -C sosu			clean
+	$(MAKE) -C sosu2		clean
+	$(MAKE) -C sosu3		clean
+	$(MAKE) -C type			clean
+	$(MAKE) -C iroha		clean
+	$(MAKE) -C chklang		clean
+	$(MAKE) -C notrec		clean
+	$(MAKE) -C bball		clean
+	$(MAKE) -C invader		clean
+	$(MAKE) -C calc			clean
+	$(MAKE) -C tview		clean
+	$(MAKE) -C mmlplay		clean
+	$(MAKE) -C gview		clean
+
+src_only_full :
+	$(MAKE) -C hcos		src_only
+	$(MAKE) -C apilib		src_only
+	$(MAKE) -C a			src_only
+	$(MAKE) -C hello3		src_only
+	$(MAKE) -C hello4		src_only
+	$(MAKE) -C hello5		src_only
+	$(MAKE) -C winhelo		src_only
+	$(MAKE) -C winhelo2		src_only
+	$(MAKE) -C winhelo3		src_only
+	$(MAKE) -C star1		src_only
+	$(MAKE) -C stars		src_only
+	$(MAKE) -C stars2		src_only
+	$(MAKE) -C lines		src_only
+	$(MAKE) -C walk			src_only
+	$(MAKE) -C noodle		src_only
+	$(MAKE) -C beepdown		src_only
+	$(MAKE) -C color		src_only
+	$(MAKE) -C color2		src_only
+	$(MAKE) -C sosu			src_only
+	$(MAKE) -C sosu2		src_only
+	$(MAKE) -C sosu3		src_only
+	$(MAKE) -C type			src_only
+	$(MAKE) -C iroha		src_only
+	$(MAKE) -C chklang		src_only
+	$(MAKE) -C notrec		src_only
+	$(MAKE) -C bball		src_only
+	$(MAKE) -C invader		src_only
+	$(MAKE) -C calc			src_only
+	$(MAKE) -C tview		src_only
+	$(MAKE) -C mmlplay		src_only
+	$(MAKE) -C gview		src_only
+	-$(DEL) hcos.img
+
+refresh :
+	$(MAKE) full
+	$(MAKE) clean_full
+	-$(DEL) hcos.img
