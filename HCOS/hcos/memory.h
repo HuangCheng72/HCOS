@@ -1,28 +1,32 @@
 #include "rbtree.h" 
 
-#define MEMMAN_FREES		673	/* ´óÔ¼64KB */
-#define MEMMAN_ADDR			0x003c0000    //ÕâÀïÖ¸¶¨µÄÊÇMEMMANÕâ¸ö½á¹¹Ìå·ÅÖÃµÄÄÚ´æ¿Õ¼ä¿ªÊ¼µØÖ· 
+#define MEMMAN_FREES		370	/* å¤§çº¦32KB */
+#define MEMMAN_ADDR			0x003c0000    //è¿™é‡ŒæŒ‡å®šçš„æ˜¯MEMMANè¿™ä¸ªç»“æ„ä½“æ”¾ç½®çš„å†…å­˜ç©ºé—´å¼€å§‹åœ°å€ 
 #define EFLAGS_AC_BIT		0x00040000
 #define CR0_CACHE_DISABLE	0x60000000
 
-//³¢ÊÔÓÃË«ÏòÁ´±íË¼ÏëĞŞ¸ÄÄÚ´æ¹ÜÀí 
-struct FREEINFO {	/* ¿ÉÓÃĞÅÏ¢ */
+//å°è¯•ç”¨åŒå‘é“¾è¡¨æ€æƒ³ä¿®æ”¹å†…å­˜ç®¡ç† 
+struct FREEINFO {	// å¯ç”¨ä¿¡æ¯
 	unsigned int addr, size;
-	struct rb_node rb_node_addr;    // µØÖ·ºìºÚÊ÷½áµã 
-	struct FREEINFO* pre;
-	struct FREEINFO* next; //¿ÉÓÃĞÅÏ¢½áµãµÄpreÖ¸ÕëºÍnextÖ¸Õë 
+    struct rb_node rb_node_addr;    // åœ°å€çº¢é»‘æ ‘ç»“ç‚¹
+    struct rb_node rb_node_size;    // å¤§å°çº¢é»‘æ ‘ç»“ç‚¹
+    struct FREEINFO* pre;
+    struct FREEINFO* next; //å¯ç”¨ä¿¡æ¯ç»“ç‚¹çš„preæŒ‡é’ˆå’ŒnextæŒ‡é’ˆ
+    struct FREEINFO* pre2;
+    struct FREEINFO* next2; //ç”¨äºå¤§å°çº¢é»‘æ ‘çš„preæŒ‡é’ˆå’ŒnextæŒ‡é’ˆ
 };
 
-struct MEMMAN {		/* ÄÚ´æ¹ÜÀí */
+struct MEMMAN {		// å†…å­˜ç®¡ç†
 	int lostsize, losts;
-	struct rb_root root_addr; //µØÖ·ºìºÚÊ÷¸ù½áµã½á¹¹Ìå 
-	struct FREEINFO free[MEMMAN_FREES+2]; //ÏÂ±êÎªMEMMAN_FREESµÄ½áµã£¬ÊÇ¿ÉÓÃÁ´±íµÄÍ·½áµã£¬ÏÂ±êÎªMEMMAN_FREES+1µÄ½áµã£¬ÊÇ¿ÕÓàÁ´±íµÄÍ·½áµã 
+	struct rb_root root_addr; //åœ°å€çº¢é»‘æ ‘æ ¹ç»“ç‚¹ç»“æ„ä½“ 
+    struct rb_root root_size; //å¤§å°çº¢é»‘æ ‘æ ¹ç»“ç‚¹ç»“æ„ä½“
+	struct FREEINFO free[MEMMAN_FREES+2]; //ä¸‹æ ‡ä¸ºMEMMAN_FREESçš„ç»“ç‚¹ï¼Œæ˜¯å¯ç”¨é“¾è¡¨çš„å¤´ç»“ç‚¹ï¼Œä¸‹æ ‡ä¸ºMEMMAN_FREES+1çš„ç»“ç‚¹ï¼Œæ˜¯ç©ºä½™é“¾è¡¨çš„å¤´ç»“ç‚¹ 
 };
 
-unsigned int memtest(unsigned int start, unsigned int end);//ÄÚ´æÈİÁ¿¼ì²é
-void memman_init(struct MEMMAN *man);//ÄÚ´æ¹ÜÀí³õÊ¼»¯ 
-unsigned int memman_total(struct MEMMAN *man);//¼ÆËã¿ÉÓÃÄÚ´æ×ÜÁ¿ 
-unsigned int memman_alloc(struct MEMMAN *man, unsigned int size);//ÉêÇëÄÚ´æ 
-int memman_free(struct MEMMAN *man, unsigned int addr, unsigned int size);//ÊÍ·ÅÄÚ´æ 
+unsigned int memtest(unsigned int start, unsigned int end);//å†…å­˜å®¹é‡æ£€æŸ¥
+void memman_init(struct MEMMAN *man);//å†…å­˜ç®¡ç†åˆå§‹åŒ– 
+unsigned int memman_total(struct MEMMAN *man);//è®¡ç®—å¯ç”¨å†…å­˜æ€»é‡ 
+unsigned int memman_alloc(struct MEMMAN *man, unsigned int size);//ç”³è¯·å†…å­˜ 
+int memman_free(struct MEMMAN *man, unsigned int addr, unsigned int size);//é‡Šæ”¾å†…å­˜ 
 unsigned int memman_alloc_4k(struct MEMMAN *man, unsigned int size);
 int memman_free_4k(struct MEMMAN *man, unsigned int addr, unsigned int size);

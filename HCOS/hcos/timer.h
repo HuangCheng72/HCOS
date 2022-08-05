@@ -3,29 +3,29 @@
 
 #define MAX_TIMER		500
 struct TIMER {
-    //³¬Ê±Ê±¼ä
+    //è¶…æ—¶æ—¶é—´
     unsigned int timeout;
-    //ËùÔÚ¶ÑÖĞÏÂ±ê£¨ÕâÀïµÄÏÂ±êÊÇÔÚÖ¸ÕëÊı×éptr_timerÀïÃæµÄÏÂ±ê£©
+    //æ‰€åœ¨å †ä¸­ä¸‹æ ‡ï¼ˆè¿™é‡Œçš„ä¸‹æ ‡æ˜¯åœ¨æŒ‡é’ˆæ•°ç»„ptr_timeré‡Œé¢çš„ä¸‹æ ‡ï¼‰
     int index;
-    //°ó¶¨µÄ»º³åÇøºÍÊı¾İ
+    //ç»‘å®šçš„ç¼“å†²åŒºå’Œæ•°æ®
     struct FIFO32 *fifo;
     int data;
 };
 struct TIMERCTL {
-    //countÎª¼ÆÊ±Æ÷£¬sizeÊÇÏÖÓĞÒÑÉè¶¨Ê±¿ÌµÄ¼ÆÊ±Æ÷ÊıÄ¿£¨¼´¶Ñ¹æÄ££©£¬totalÊÇµ±Ç°ÒÑ¾­±»ÉêÇë³öÈ¥µÄ¶¨Ê±Æ÷ÊıÄ¿
+    //countä¸ºè®¡æ—¶å™¨ï¼Œsizeæ˜¯ç°æœ‰å·²è®¾å®šæ—¶åˆ»çš„è®¡æ—¶å™¨æ•°ç›®ï¼ˆå³å †è§„æ¨¡ï¼‰ï¼Œtotalæ˜¯å½“å‰å·²ç»è¢«ç”³è¯·å‡ºå»çš„å®šæ—¶å™¨æ•°ç›®
     unsigned int count, size, total;
-    //ÔËÓÃĞ¡¶¥¶ÑË¼Ïë¸ÄĞ´£¨ÏÂ±ê´Ó1¿ªÊ¼±È½ÏºÃ¼ÆËã£©£¬¿ÉÒÔÔÚtimer[0]´¦·ÅÖÃÉÚ±ø
-    //ÒÔtimeoutÎªÅÅĞò¼üÖµ
+    //è¿ç”¨å°é¡¶å †æ€æƒ³æ”¹å†™ï¼ˆä¸‹æ ‡ä»1å¼€å§‹æ¯”è¾ƒå¥½è®¡ç®—ï¼‰ï¼Œå¯ä»¥åœ¨timer[0]å¤„æ”¾ç½®å“¨å…µ
+    //ä»¥timeoutä¸ºæ’åºé”®å€¼
     struct TIMER timer[MAX_TIMER + 1];
-    //Ö¸ÕëÊı×é
+    //æŒ‡é’ˆæ•°ç»„
     struct TIMER* ptr_timer[MAX_TIMER + 1];
 };
 extern struct TIMERCTL timerctl;
-void init_pit(void);//³õÊ¼»¯PIT
-struct TIMER *timer_alloc(void); //ÉêÇëÒ»¸ö¶¨Ê±Æ÷
-void timer_free(struct TIMER *timer); //ÊÍ·ÅÒ»¸ö¶¨Ê±Æ÷
-void timer_init(struct TIMER *timer, struct FIFO32 *fifo, int data); //³õÊ¼»¯Ò»¸ö¶¨Ê±Æ÷µÄÊôĞÔ
-void timer_settime(struct TIMER *timer, unsigned int timeout); //ÉèÖÃ¶¨Ê±Æ÷µÄÓè¶¨Ê±¿Ì
-int timer_cancel(struct TIMER *timer); //É¾³ıµôalloc³öÀ´µÄÒ»¸ö¶¨Ê±Æ÷
-void inthandler20(int *esp);//´¦Àíº¯Êı
-void timer_cancelall(struct FIFO32 *fifo); //É¾³ıµô°ó¶¨ÁËÄ³¸ö»º³åÇøµÄÈ«²¿¶¨Ê±Æ÷
+void init_pit(void);//åˆå§‹åŒ–PIT
+struct TIMER *timer_alloc(void); //ç”³è¯·ä¸€ä¸ªå®šæ—¶å™¨
+void timer_free(struct TIMER *timer); //é‡Šæ”¾ä¸€ä¸ªå®šæ—¶å™¨
+void timer_init(struct TIMER *timer, struct FIFO32 *fifo, int data); //åˆå§‹åŒ–ä¸€ä¸ªå®šæ—¶å™¨çš„å±æ€§
+void timer_settime(struct TIMER *timer, unsigned int timeout); //è®¾ç½®å®šæ—¶å™¨çš„äºˆå®šæ—¶åˆ»
+int timer_cancel(struct TIMER *timer); //åˆ é™¤æ‰allocå‡ºæ¥çš„ä¸€ä¸ªå®šæ—¶å™¨
+void inthandler20(int *esp);//å¤„ç†å‡½æ•°
+void timer_cancelall(struct FIFO32 *fifo); //åˆ é™¤æ‰ç»‘å®šäº†æŸä¸ªç¼“å†²åŒºçš„å…¨éƒ¨å®šæ—¶å™¨

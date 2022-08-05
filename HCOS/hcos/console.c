@@ -32,9 +32,11 @@ void console_task(struct SHEET *sheet, int memtotal){
 	task->fat = fat;
 	if (hzk16[4096] != 0xff) {	//是否载入了中文字库
 		task->langmode = 3;
+	} else if(nihongo[4096] != 0xff){   //是否载入了日文字库
+		task->langmode = 2; //默认为日文EUC模式
 	} else {
-		task->langmode = 0; //默认为英文模式
-	}
+        task->langmode = 0; //默认为英文模式
+    }
 	task->langbyte1 = 0;
 
 	//显示提示符

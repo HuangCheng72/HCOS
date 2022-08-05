@@ -7,12 +7,12 @@ IMGTOL   = $(TOOLPATH)imgtol.com
 COPY     = copy
 DEL      = del
 
-# ƒfƒtƒHƒ‹ƒg“®ì
+# é»˜è®¤æ“ä½œ
 
 default :
 	$(MAKE) hcos.img
 
-# ƒtƒ@ƒCƒ‹¶¬‹K‘¥
+# æ–‡ä»¶ç”Ÿæˆç‰¹æ®Šè§„åˆ™
 
 hcos.img : hcos/ipl20.bin hcos/hcos.sys Makefile \
 		a/a.hrb hello3/hello3.hrb hello4/hello4.hrb hello5/hello5.hrb \
@@ -68,10 +68,7 @@ hcos.img : hcos/ipl20.bin hcos/hcos.sys Makefile \
         copy from:font/HZK16.fnt to:@: \
 		imgout:hcos.img
 
-# ƒRƒ}ƒ“ƒh
-
-clean :
-# ‰½‚à‚µ‚È‚¢
+# å¸¸ç”¨å‘½ä»¤è¡Œ
 
 src_only :
 	$(MAKE) clean

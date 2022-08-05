@@ -99,10 +99,10 @@ void putfont8(char *vram, int xsize, int x, int y, char c, char *font){
 	}
 	return;
 }
-//专用于中文汉字显示的（打印上部和下部）
+//专用于中文汉字显示的函数
 void putfont32(char *vram, int xsize, int x, int y, char c, char *font1, char *font2){
 	int i,k,j,f;
-	char *p, d ;
+	char *p;
 	j=0;
 	p=vram+(y+j)*xsize+x;
 	j++;

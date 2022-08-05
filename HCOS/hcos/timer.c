@@ -1,51 +1,51 @@
 #include "bootpack.h"
 
 struct TIMERCTL timerctl;
-//½»»»Á½¸öÔªËØ£¬¸Ãº¯Êı²»¶ÔÍâ±©Â¶
+//äº¤æ¢ä¸¤ä¸ªå…ƒç´ ï¼Œè¯¥å‡½æ•°ä¸å¯¹å¤–æš´éœ²
 void exchange(int i,int j){
     if(i == j){
         return;
     }
-    //½»»»Ö¸ÕëÔªËØ
+    //äº¤æ¢æŒ‡é’ˆå…ƒç´ 
     struct TIMER* temp = timerctl.ptr_timer[i];
     timerctl.ptr_timer[i] = timerctl.ptr_timer[j];
     timerctl.ptr_timer[j] = temp;
-    //¸üĞÂÏÂ±ê
+    //æ›´æ–°ä¸‹æ ‡
     timerctl.ptr_timer[i]->index = i;
     timerctl.ptr_timer[j]->index = j;
     return;
 }
-//ÔªËØÉÏ¸¡£¬·µ»Ø×îÖÕµÄÎ»ÖÃ£¬¸Ãº¯Êı²»¶ÔÍâ±©Â¶
+//å…ƒç´ ä¸Šæµ®ï¼Œè¿”å›æœ€ç»ˆçš„ä½ç½®ï¼Œè¯¥å‡½æ•°ä¸å¯¹å¤–æš´éœ²
 void swim(int i){
-    //Èç¹ûÏÂ±êÎªiµÄ¶¨Ê±Æ÷Óè¶¨Ê±¿ÌĞ¡ÓÚÏÂ±êÎªi/2µÄ¶¨Ê±Æ÷Óè¶¨Ê±¿Ì£¬¾Í½»»»µ½Ç°ÃæÈ¥
-    while(timerctl.ptr_timer[i]->timeout < timerctl.ptr_timer[i/2]->timeout){//ÒòÎªtimer[0]´¦ÊÇÉÚ±ø£¬½»»»µ½timer[1]¾ÍÊÇ¶Ñ¶¥ÁË£¬²»»áÔÙÉÏ¸¡
+    //å¦‚æœä¸‹æ ‡ä¸ºiçš„å®šæ—¶å™¨äºˆå®šæ—¶åˆ»å°äºä¸‹æ ‡ä¸ºi/2çš„å®šæ—¶å™¨äºˆå®šæ—¶åˆ»ï¼Œå°±äº¤æ¢åˆ°å‰é¢å»
+    while(timerctl.ptr_timer[i]->timeout < timerctl.ptr_timer[i/2]->timeout){//å› ä¸ºtimer[0]å¤„æ˜¯å“¨å…µï¼Œäº¤æ¢åˆ°timer[1]å°±æ˜¯å †é¡¶äº†ï¼Œä¸ä¼šå†ä¸Šæµ®
         exchange(i,i/2);
         i /= 2;
     }
     return;
 }
-//ÔªËØÏÂ³Á£¬¸Ãº¯Êı²»¶ÔÍâ±©Â¶
+//å…ƒç´ ä¸‹æ²‰ï¼Œè¯¥å‡½æ•°ä¸å¯¹å¤–æš´éœ²
 void sink(int i){
-    //ÈôÊÇi´¦¶¨Ê±Æ÷Óè¶¨Ê±¿Ì´óÓÚi*2»òÕßi*2+1´¦¶¨Ê±Æ÷Óè¶¨Ê±¿Ì£¬¾Í½»»»µ½½ÏĞ¡µÄÄÇ¸öÎ»ÖÃ
-    //×¢Òâ¶ÑµÄ¹æÄ£
+    //è‹¥æ˜¯iå¤„å®šæ—¶å™¨äºˆå®šæ—¶åˆ»å¤§äºi*2æˆ–è€…i*2+1å¤„å®šæ—¶å™¨äºˆå®šæ—¶åˆ»ï¼Œå°±äº¤æ¢åˆ°è¾ƒå°çš„é‚£ä¸ªä½ç½®
+    //æ³¨æ„å †çš„è§„æ¨¡
     while(2 * i <= timerctl.size){
-        //±È½Ïi*2ºÍi*2+1ÄÄ¸ö¸üĞ¡
+        //æ¯”è¾ƒi*2å’Œi*2+1å“ªä¸ªæ›´å°
         int j = 2 * i;
         if(j < timerctl.size && timerctl.ptr_timer[j+1]->timeout < timerctl.ptr_timer[j]->timeout){
             j++;
         }
         if(timerctl.ptr_timer[i]->timeout < timerctl.ptr_timer[j]->timeout){
-            //i´¦¶¨Ê±Æ÷Óè¶¨Ê±¿ÌÒÑ¾­±ÈÁ½¸öµ±ÖĞ×îĞ¡µÄÄÇÒ»¸ö¶¼ÒªĞ¡ÁË£¬ËµÃ÷·ûºÏĞ¡¶¥¶ÑĞÔÖÊ£¬ÍË³ö
+            //iå¤„å®šæ—¶å™¨äºˆå®šæ—¶åˆ»å·²ç»æ¯”ä¸¤ä¸ªå½“ä¸­æœ€å°çš„é‚£ä¸€ä¸ªéƒ½è¦å°äº†ï¼Œè¯´æ˜ç¬¦åˆå°é¡¶å †æ€§è´¨ï¼Œé€€å‡º
             return;
         }
-        //²»·ûºÏĞ¡¶¥¶ÑĞÔÖÊ£¬¾Í½»»»
+        //ä¸ç¬¦åˆå°é¡¶å †æ€§è´¨ï¼Œå°±äº¤æ¢
         exchange(i,j);
-        //¸üĞÂjµÄÖµ
+        //æ›´æ–°jçš„å€¼
         i = j;
     }
     return;
 }
-//³õÊ¼»¯PIT
+//åˆå§‹åŒ–PIT
 void init_pit(void){
 	io_out8(PIT_CTRL, 0x34);
 	io_out8(PIT_CNT0, 0x9c);
@@ -53,9 +53,9 @@ void init_pit(void){
 	timerctl.count = 0;
     timerctl.size = 0;
     timerctl.total = 0;
-    timerctl.timer[0].timeout = 0;//ÉèÖÃtimer[0]´¦ÊÇÉÚ±ø
-    //Ö¸ÕëÖ¸Ïò¾ßÌåµÄÄÚ´æ¿Õ¼ä
-    //ÏÂ±êÒ²¸üĞÂÎªÔÚÖ¸ÕëÊı×éÖĞµÄÎ»ÖÃ
+    timerctl.timer[0].timeout = 0;//è®¾ç½®timer[0]å¤„æ˜¯å“¨å…µ
+    //æŒ‡é’ˆæŒ‡å‘å…·ä½“çš„å†…å­˜ç©ºé—´
+    //ä¸‹æ ‡ä¹Ÿæ›´æ–°ä¸ºåœ¨æŒ‡é’ˆæ•°ç»„ä¸­çš„ä½ç½®
     int i;
     for(i = 0; i <= MAX_TIMER; i++){
         timerctl.ptr_timer[i] = &timerctl.timer[i];
@@ -63,113 +63,113 @@ void init_pit(void){
     }
     return;
 }
-//ÉêÇëÒ»¸ö¶¨Ê±Æ÷
+//ç”³è¯·ä¸€ä¸ªå®šæ—¶å™¨
 struct TIMER *timer_alloc(void){
     if(timerctl.total == MAX_TIMER){
-        //Èç¹û¶¨Ê±Æ÷¸öÊıÒÑ¾­´ïµ½ÉÏÏŞ
-        return 0; //²åÈëÊ§°Ü£¬·µ»ØnullÖ¸Õë
+        //å¦‚æœå®šæ—¶å™¨ä¸ªæ•°å·²ç»è¾¾åˆ°ä¸Šé™
+        return 0; //æ’å…¥å¤±è´¥ï¼Œè¿”å›nullæŒ‡é’ˆ
     }
-    //Ã»ÓĞµ½´ïÉÏÏŞ¾Í²åÈëµ½total+1Î»ÖÃ£¬ËùÒÔ·µ»ØÕâ¸öÖ¸Õë
+    //æ²¡æœ‰åˆ°è¾¾ä¸Šé™å°±æ’å…¥åˆ°total+1ä½ç½®ï¼Œæ‰€ä»¥è¿”å›è¿™ä¸ªæŒ‡é’ˆ
     return timerctl.ptr_timer[++timerctl.total];
 }
-//ÊÍ·ÅÒ»¸ö¶¨Ê±Æ÷
+//é‡Šæ”¾ä¸€ä¸ªå®šæ—¶å™¨
 void timer_free(struct TIMER *timer){
-    //ÏÈÅĞ¶ÏÄÜ²»ÄÜÊÍ·Å
-    //ÓĞÃ»ÓĞÕıÔÚÔËĞĞµÄ¶¨Ê±Æ÷»òÕßÊÇ²»ÊÇÔÚËùÓĞ¶¨Ê±Æ÷Ö®Íâ
+    //å…ˆåˆ¤æ–­èƒ½ä¸èƒ½é‡Šæ”¾
+    //æœ‰æ²¡æœ‰æ­£åœ¨è¿è¡Œçš„å®šæ—¶å™¨æˆ–è€…æ˜¯ä¸æ˜¯åœ¨æ‰€æœ‰å®šæ—¶å™¨ä¹‹å¤–
     if(timerctl.size == 0 || timerctl.total < timer->index){
         return;
     }
-    //¸ø¶¨µÄ¶¨Ê±Æ÷ÊÇ·ñÒÑ¾­ÔÚ¶ÑÖĞ
+    //ç»™å®šçš„å®šæ—¶å™¨æ˜¯å¦å·²ç»åœ¨å †ä¸­
     if(timerctl.size < timer->index){
-        //²»ÔÚ¶ÑÖĞµÄ»°²»ĞèÒªÎÒÃÇ²ÙĞÄ
+        //ä¸åœ¨å †ä¸­çš„è¯ä¸éœ€è¦æˆ‘ä»¬æ“å¿ƒ
         return;
     } else {
-        //ÔÚ¶ÑÖĞ
+        //åœ¨å †ä¸­
         int e;
 		e = io_load_eflags();
-		io_cli(); //ÕıÔÚÉèÖÃ£¬½ûÖ¹ÖĞ¶Ï 
-        //Ê×ÏÈ°ÑÕâ¸öÖ¸Õë½»»»µ½¶ÑÄ©Î²£¬È»ºóÔÙËõĞ¡¶ÑµÄ¹æÄ£
+		io_cli(); //æ­£åœ¨è®¾ç½®ï¼Œç¦æ­¢ä¸­æ–­ 
+        //é¦–å…ˆæŠŠè¿™ä¸ªæŒ‡é’ˆäº¤æ¢åˆ°å †æœ«å°¾ï¼Œç„¶åå†ç¼©å°å †çš„è§„æ¨¡
         int index = timer->index;
         exchange(index,timerctl.size);
         timerctl.size--;
-        //È»ºóµ÷ÕûË³Ğò£¨ÏÂ³Á£©
+        //ç„¶åè°ƒæ•´é¡ºåºï¼ˆä¸‹æ²‰ï¼‰
         sink(1);
-        //ÉÏ¸¡µ÷Õû
+        //ä¸Šæµ®è°ƒæ•´
         swim(timerctl.size);
         io_store_eflags(e);
     }
     return;
 }
-//³õÊ¼»¯Ò»¸ö¶¨Ê±Æ÷µÄÊôĞÔ
+//åˆå§‹åŒ–ä¸€ä¸ªå®šæ—¶å™¨çš„å±æ€§
 void timer_init(struct TIMER *timer, struct FIFO32 *fifo, int data){
     timer->fifo = fifo;
     timer->data = data;
     return;
 }
-//ÉèÖÃ¶¨Ê±Æ÷µÄÓè¶¨Ê±¿Ì
+//è®¾ç½®å®šæ—¶å™¨çš„äºˆå®šæ—¶åˆ»
 void timer_settime(struct TIMER *timer, unsigned int timeout){
-    //Èç¹ûÔÚËùÓĞ¶¨Ê±Æ÷Ö®Íâ£¬ÍË³ö
+    //å¦‚æœåœ¨æ‰€æœ‰å®šæ—¶å™¨ä¹‹å¤–ï¼Œé€€å‡º
     if(timer->index > timerctl.total){
         return;
     }
     int e;
 	e = io_load_eflags();
-	io_cli(); //ÕıÔÚÉèÖÃ£¬½ûÖ¹ÖĞ¶Ï 
-    //Èç¹ûÔÚ¶ÑÍâ£¬¾ÍÒªÊ×ÏÈ½ø¶Ñ
+	io_cli(); //æ­£åœ¨è®¾ç½®ï¼Œç¦æ­¢ä¸­æ–­ 
+    //å¦‚æœåœ¨å †å¤–ï¼Œå°±è¦é¦–å…ˆè¿›å †
     if(timer->index > timerctl.size){
-        //À©´ó¶ÑµÄ·¶Î§
+        //æ‰©å¤§å †çš„èŒƒå›´
         timerctl.size++;
-        //°ÑÎ»ÖÃ½»»»µ½¶ÑµÄ×îÄ©Î²
+        //æŠŠä½ç½®äº¤æ¢åˆ°å †çš„æœ€æœ«å°¾
         exchange(timer->index , timerctl.size);
     }
-    //È»ºóÔÙÉèÖÃÊ±¿Ì
+    //ç„¶åå†è®¾ç½®æ—¶åˆ»
     timer->timeout = timeout;
-    //ÉÏ¸¡ÏÂ³Áµ÷Õû¶Ñ
+    //ä¸Šæµ®ä¸‹æ²‰è°ƒæ•´å †
     swim(1);
     sink(timerctl.size);
     io_store_eflags(e);
     return;
 }
-//É¾³ıµôÒ»¸ö¶¨Ê±Æ÷ 
+//åˆ é™¤æ‰ä¸€ä¸ªå®šæ—¶å™¨ 
 int timer_cancel(struct TIMER *timer){
 	if(timerctl.total < timer->index){
-		//¶¨Ê±Æ÷²»ÊôÓÚÒÑ¾­ÉêÇëµÄ¶¨Ê±Æ÷Ö®Ò»£¬¾Í·µ»Ø
+		//å®šæ—¶å™¨ä¸å±äºå·²ç»ç”³è¯·çš„å®šæ—¶å™¨ä¹‹ä¸€ï¼Œå°±è¿”å›
 		return 1; 
 	}
     int e;
 	e = io_load_eflags();
-	io_cli(); //ÕıÔÚÉèÖÃ£¬½ûÖ¹ÖĞ¶Ï 
-	//¸ø¶¨µÄ¶¨Ê±Æ÷ÊÇ·ñÒÑ¾­ÔÚ¶ÑÖĞ
+	io_cli(); //æ­£åœ¨è®¾ç½®ï¼Œç¦æ­¢ä¸­æ–­ 
+	//ç»™å®šçš„å®šæ—¶å™¨æ˜¯å¦å·²ç»åœ¨å †ä¸­
     if(timerctl.size >= timer->index){
-        //ÔÚ¶ÑÖĞ£¬¾ÍÏÈÊÍ·Å 
+        //åœ¨å †ä¸­ï¼Œå°±å…ˆé‡Šæ”¾ 
         timer_free(timer); 
     }
-    //ÔÙ°ÑÖ¸ÕëÖ±½Ó½»»»µ½ËùÓĞ¶¨Ê±Æ÷×îºó£¬È»ºóËõ¼õËùÓĞ¶¨Ê±Æ÷µÄ¹æÄ£ 
+    //å†æŠŠæŒ‡é’ˆç›´æ¥äº¤æ¢åˆ°æ‰€æœ‰å®šæ—¶å™¨æœ€åï¼Œç„¶åç¼©å‡æ‰€æœ‰å®šæ—¶å™¨çš„è§„æ¨¡ 
     exchange(timer->index,timerctl.total);
     timerctl.total--;
     io_store_eflags(e);
     return 1;
 }
 void inthandler20(int *esp){
-	char ts = 0;//ÇĞ»»ÈÎÎñ±êÊ¶·û 
-	io_out8(PIC0_OCW2, 0x60);	//°ÑIRQ-00ĞÅºÅ½ÓÊÜ½áÊøµÄĞÅÏ¢Í¨Öª¸øPIC
-	timerctl.count++;//¼ÆÊ±Ôö¼Ó
-	//ÅĞ¶ÏÓĞÃ»ÓĞ¶¨Ê±Æ÷£¬Èç¹ûÓĞµÄ»°£¬¶Ñ¶¥¶¨Ê±Æ÷ÊÇ·ñÒÑ¾­³¬Ê± 
+	char ts = 0;//åˆ‡æ¢ä»»åŠ¡æ ‡è¯†ç¬¦ 
+	io_out8(PIC0_OCW2, 0x60);	//æŠŠIRQ-00ä¿¡å·æ¥å—ç»“æŸçš„ä¿¡æ¯é€šçŸ¥ç»™PIC
+	timerctl.count++;//è®¡æ—¶å¢åŠ 
+	//åˆ¤æ–­æœ‰æ²¡æœ‰å®šæ—¶å™¨ï¼Œå¦‚æœæœ‰çš„è¯ï¼Œå †é¡¶å®šæ—¶å™¨æ˜¯å¦å·²ç»è¶…æ—¶ 
 	while(timerctl.size > 0 && timerctl.ptr_timer[1]->timeout <= timerctl.count){
-		//Èç¹ûÓĞ¶¨Ê±Æ÷ÅĞ¶ÏÒ»ÏÂ¶Ñ¶¥ÊÇ²»ÊÇ¶àÈÎÎñµÄ¶¨Ê±Æ÷
+		//å¦‚æœæœ‰å®šæ—¶å™¨åˆ¤æ–­ä¸€ä¸‹å †é¡¶æ˜¯ä¸æ˜¯å¤šä»»åŠ¡çš„å®šæ—¶å™¨
 		if (timerctl.ptr_timer[1] == task_timer) {
-			//Èç¹ûÊÇ£¬¾ÍĞŞ¸Ä±êÊ¶·û
+			//å¦‚æœæ˜¯ï¼Œå°±ä¿®æ”¹æ ‡è¯†ç¬¦
 			ts = 1;
 		}else{
-			//Èç¹û²»ÊÇ
-			//Êä³öµ½»º³åÇø
+			//å¦‚æœä¸æ˜¯
+			//è¾“å‡ºåˆ°ç¼“å†²åŒº
         	fifo32_put(timerctl.ptr_timer[1]->fifo, timerctl.ptr_timer[1]->data);
 		}
-		//ÊÍ·Å¶Ñ¶¥¶¨Ê±Æ÷
+		//é‡Šæ”¾å †é¡¶å®šæ—¶å™¨
         timer_free(timerctl.ptr_timer[1]);
 	}
 	if(ts != 0){
-		//±êÊ¶·ûÎªÕæ£¬ÇĞ»»ÈÎÎñ 
+		//æ ‡è¯†ç¬¦ä¸ºçœŸï¼Œåˆ‡æ¢ä»»åŠ¡ 
 		task_switch();
 	}
 	return;
@@ -179,7 +179,7 @@ void timer_cancelall(struct FIFO32 *fifo){
 	int e, i;
 	struct TIMER *t;
 	e = io_load_eflags();
-	io_cli();	//½ûÖ¹ÖĞ¶Ï 
+	io_cli();	//ç¦æ­¢ä¸­æ–­ 
 	for (i = 1; i <= timerctl.total; i++) {
 		t = timerctl.ptr_timer[i];
 		if (t->fifo == fifo) {
