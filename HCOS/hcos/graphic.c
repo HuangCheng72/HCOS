@@ -99,20 +99,62 @@ void putfont8(char *vram, int xsize, int x, int y, char c, char *font){
 	}
 	return;
 }
+//专用于中文汉字显示的（打印上部和下部）
+void putfont32(char *vram, int xsize, int x, int y, char c, char *font1, char *font2){
+	int i,k,j,f;
+	char *p, d ;
+	j=0;
+	p=vram+(y+j)*xsize+x;
+	j++;
+	for(i=0;i<16;i++){
+		for(k=0;k<8;k++){
+			if(font1[i]&(0x80>>k)){
+				p[k+(i%2)*8]=c;
+			}
+		}
+		for(k=0;k<8/2;k++){
+			f=p[k+(i%2)*8];
+			p[k+(i%2)*8]=p[8-1-k+(i%2)*8];
+			p[8-1-k+(i%2)*8]=f;
+		}
+		if(i%2){
+			p=vram+(y+j)*xsize+x;
+			j++;
+		}
+	}
+	for(i=0;i<16;i++){
+		for(k=0;k<8;k++){
+			if(font2[i]&(0x80>>k)){
+				p[k+(i%2)*8]=c;
+			}
+		}
+		for(k=0;k<8/2;k++){
+			f=p[k+(i%2)*8];
+			p[k+(i%2)*8]=p[8-1-k+(i%2)*8];
+			p[8-1-k+(i%2)*8]=f;
+		}
+		if(i%2){
+			p=vram+(y+j)*xsize+x;
+			j++;
+		}
+	}
+	return;
+}
 
 void putfonts8_asc(char *vram, int xsize, int x, int y, char c, unsigned char *s){
     //hankaku是作者提供的256个字符的点阵字库文件
 	extern char hankaku[4096];
 	struct TASK *task = task_now();
-	char *nihongo = (char *) *((int *) 0x0fe8), *font;
+	char *nihongo = (char *) *((int *) 0x0fe8), *hzk16 = (char *) *((int *) 0x0ff0),*font;
 	int k, t;
-
+    //普通英文
 	if (task->langmode == 0) {
 		for (; *s != 0x00; s++) {
 			putfont8(vram, xsize, x, y, c, hankaku + *s * 16);
 			x += 8;
 		}
 	}
+    //日文半角
 	if (task->langmode == 1) {
 		for (; *s != 0x00; s++) {
 			if (task->langbyte1 == 0) {
@@ -143,6 +185,7 @@ void putfonts8_asc(char *vram, int xsize, int x, int y, char c, unsigned char *s
 			x += 8;
 		}
 	}
+    //日文全角
 	if (task->langmode == 2) {
 		for (; *s != 0x00; s++) {
 			if (task->langbyte1 == 0) {
@@ -158,6 +201,25 @@ void putfonts8_asc(char *vram, int xsize, int x, int y, char c, unsigned char *s
 				font = nihongo + 256 * 16 + (k * 94 + t) * 32;
 				putfont8(vram, xsize, x - 8, y, c, font     );	/* 左半部分 */
 				putfont8(vram, xsize, x    , y, c, font + 16);	/* 右半部分 */
+			}
+			x += 8;
+		}
+	}
+    //中文模式
+    if (task->langmode == 3) {
+		for (; *s != 0x00; s++) {
+			if (task->langbyte1 == 0) {
+				if (0xa1 <= *s && *s <= 0xfe) {
+					task->langbyte1 = *s;
+				} else {
+					putfont8(vram, xsize, x, y, c, hankaku + *s * 16);//打印半角英文字符
+				}
+			} else {
+				k = task->langbyte1 - 0xa1;
+				t = *s - 0xa1;
+				task->langbyte1 = 0;
+				font = hzk16 + (k * 94 + t) * 32;
+				putfont32(vram,xsize,x-8,y,c,font,font+16);
 			}
 			x += 8;
 		}

@@ -57,7 +57,8 @@ void HariMain(void){
 	int j, x, y, mmx = -1, mmy = -1, mmx2 = 0;
 	struct SHEET *sht = 0, *key_win, *sht2;
 	int *fat;
-	unsigned char *nihongo;
+    //日文字库，中文字库
+	unsigned char *nihongo, *hzk16;
 	struct FILEINFO *finfo;
 	extern char hankaku[4096];
 
@@ -128,11 +129,11 @@ void HariMain(void){
 	fifo32_put(&keycmd, KEYCMD_LED);
 	fifo32_put(&keycmd, key_leds);
 
-	//引入日文字体
+	//引入日文字库
 	fat = (int *) memman_alloc_4k(memman, 4 * 2880);
 	file_readfat(fat, (unsigned char *) (ADR_DISKIMG + 0x000200));
 
-	finfo = file_search("nihongo.fnt", (struct FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
+    finfo = file_search("nihongo.fnt", (struct FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
 	if (finfo != 0) {
 		i = finfo->size;
 		nihongo = file_loadfile2(finfo->clustno, &i, fat);
@@ -146,6 +147,26 @@ void HariMain(void){
 		}
 	}
 	*((int *) 0x0fe8) = (int) nihongo;
+	memman_free_4k(memman, (int) fat, 4 * 2880);
+    
+    //引入中文字库
+	fat = (int *) memman_alloc_4k(memman, 4 * 2880);
+	file_readfat(fat, (unsigned char *) (ADR_DISKIMG + 0x000200));
+
+	finfo = file_search("HZK16.fnt", (struct FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
+	if (finfo != 0) {
+		i = finfo->size;
+		hzk16 = file_loadfile2(finfo->clustno, &i, fat);
+	} else {
+		hzk16 = (unsigned char *) memman_alloc_4k(memman, 16 * 256 + 32 * 94 * 47);
+		for (i = 0; i < 16 * 256; i++) {
+			hzk16[i] = hankaku[i]; //没有字库，半角部分直接复制英文字库
+		}
+		for (i = 16 * 256; i < 16 * 256 + 32 * 94 * 47; i++) {
+			hzk16[i] = 0xff; //没有字库，剩余部分全部以0xff填充
+		}
+	}
+	*((int *) 0x0ff0) = (int) hzk16;
 	memman_free_4k(memman, (int) fat, 4 * 2880);
 
 	for (;;) {

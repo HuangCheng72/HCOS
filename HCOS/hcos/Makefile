@@ -23,13 +23,13 @@ DEL      = del
 #默认操作
 
 default :
-	$(MAKE) ipl09.bin
+	$(MAKE) ipl20.bin
 	$(MAKE) hcos.sys
 
 #文件生成特殊规则
 
-ipl09.bin : ipl09.nas Makefile
-	$(NASK) ipl09.nas ipl09.bin ipl09.lst
+ipl20.bin : ipl20.nas Makefile
+	$(NASK) ipl20.nas ipl20.bin ipl20.lst
 
 asmhead.bin : asmhead.nas Makefile
 	$(NASK) asmhead.nas asmhead.bin asmhead.lst
@@ -75,5 +75,5 @@ clean :
 
 src_only :
 	$(MAKE) clean
-	-$(DEL) ipl09.bin
+	-$(DEL) ipl20.bin
 	-$(DEL) hcos.sys
