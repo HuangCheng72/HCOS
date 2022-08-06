@@ -93,9 +93,8 @@ void timer_free(struct TIMER *timer){
         exchange(index,timerctl.size);
         timerctl.size--;
         //然后调整顺序（下沉）
-        sink(1);
-        //上浮调整
-        swim(timerctl.size);
+        sink(index);
+        //交换过来的堆底元素所指向的定时器的timeout值无论如何都是不小于原来元素所指向的timeout值，因此只需要下沉调整即可
         io_store_eflags(e);
     }
     return;
@@ -122,11 +121,10 @@ void timer_settime(struct TIMER *timer, unsigned int timeout){
         //把位置交换到堆的最末尾
         exchange(timer->index , timerctl.size);
     }
-    //然后再设置时刻
-    timer->timeout = timeout;
-    //上浮下沉调整堆
-    swim(1);
-    sink(timerctl.size);
+    //然后再设置予定时刻（从现在开始计算，何时超时）
+    timer->timeout = timeout + timerctl.count;
+    //因为该元素位于堆底，只需要上浮调整堆即可
+    swim(timerctl.size);
     io_store_eflags(e);
     return;
 }
@@ -136,9 +134,6 @@ int timer_cancel(struct TIMER *timer){
 		//定时器不属于已经申请的定时器之一，就返回
 		return 1; 
 	}
-    int e;
-	e = io_load_eflags();
-	io_cli(); //正在设置，禁止中断 
 	//给定的定时器是否已经在堆中
     if(timerctl.size >= timer->index){
         //在堆中，就先释放 
@@ -147,7 +142,6 @@ int timer_cancel(struct TIMER *timer){
     //再把指针直接交换到所有定时器最后，然后缩减所有定时器的规模 
     exchange(timer->index,timerctl.total);
     timerctl.total--;
-    io_store_eflags(e);
     return 1;
 }
 void inthandler20(int *esp){
@@ -184,6 +178,7 @@ void timer_cancelall(struct FIFO32 *fifo){
 		t = timerctl.ptr_timer[i];
 		if (t->fifo == fifo) {
 			timer_cancel(t);
+            i--;//如此是为了防止交换过来的定时器绑定的缓冲区也是fifo
 		}
 	}
 	io_store_eflags(e);
