@@ -109,10 +109,6 @@ struct FREEINFO* my_search_size(struct rb_node* rbnode, unsigned int size){
         //找到一个大于等于的结点
         if(mynode->size == size){
             //等于就直接返回
-            if(mynode->next2){
-                //优先链表里面的，不要过多变动红黑树
-                return mynode->next2;
-            }
             return mynode;
         }
         if(mynode->rb_node_size.rb_left == 0 ||  container_of(mynode->rb_node_size.rb_left, struct FREEINFO, rb_node_size)->size < size ){
