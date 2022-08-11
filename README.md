@@ -5,8 +5,8 @@
 
 1. [运用小根堆思想重写定时器功能](documents/timer.md)
 2. [双向链表与RBT，优化内存管理功能（上）](documents/memory1.md)
-3. [双向链表与RBT，优化内存管理功能（中）](documents/memory2.md)。
-4. 双向链表与RBT，优化内存管理功能（下）（待发布）。
+3. [双向链表与RBT，优化内存管理功能（中）](documents/memory2.md)
+4. 双向链表与RBT，优化内存管理功能（下）(documents/memory3.md)
 6. 实现中文支持（待发布）。
 
 使用方法：
